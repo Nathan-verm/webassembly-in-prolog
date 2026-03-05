@@ -115,8 +115,8 @@ We hebben ervoor gekozen een subset van WebAssembly te ondersteunen waarbij alle
 - `i32.eqz` Neem het bovenste element van de stapel en kijk als dit element gelijk is aan `0`, plaats `1` op de stapel als dat zo is, anders `0`.
 - `i32.eq` Neem de twee bovenste elementen van de stapel, als ze gelijk zijn plaats je `1` op de stapel, anders `0`.
 - `i32.ne` Neem de twee bovenste elementen van de stapel, als ze niet gelijk zijn plaats je `1` op de stapel, anders `0`.
-- `i32.and` Neem de twee bovenste elementen van de stapel, als ze beiden verschillen van `0` zijn plaats je `1` op de stapel, anders `0`.
-- `i32.or` Neem de twee bovenste elementen van de stapel, als één of meerdere van hen verschilt van `0` plaats je `1` op de stapel, anders `0`.
+- `i32.and` Neem de twee bovenste elementen van de stapel en doe een bitwise and, het resultaat plaats je opnieuw op de stapel.
+- `i32.or` Neem de twee bovenste elementen van de stapel en doe een bitwise or, het resultaat plaats je opnieuw op de stapel.
 - `i32.xor` Neem de twee bovenste elementen van de stapel, en bereken de bitwise xor hiervan. Het resultaat plaats je opnieuw op de stapel.
 
 ### Lokale variabelen
