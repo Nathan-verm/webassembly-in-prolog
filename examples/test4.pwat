@@ -1,0 +1,13 @@
+(module
+ (start 1)
+
+ (func (args 2) (locals 0) (results 1)
+   local.get 0
+   local.get 1
+   i32.add
+ )
+
+ (func (args 0) (locals 0) (results 0)
+   i32.const 10
+ )
+)

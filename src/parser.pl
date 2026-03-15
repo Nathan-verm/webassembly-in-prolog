@@ -1,0 +1,157 @@
+:- module(parser, [parse/2]).
+
+:- use_module(library(readutil)).
+
+:- discontiguous parser:instruction/3.
+
+% Entry point
+parse(File, Module) :-
+    read_file_to_string(File, String, []),
+    string_codes(String, Codes),
+    phrase(module(Module), Codes).
+
+
+% Whitespace includes comments
+ws --> space, ws.
+ws --> comment, ws.
+ws --> [].
+
+space --> [C], { char_type(C, space) }.
+
+comment --> ";;", comment_chars.
+comment_chars --> [C], { C \= 10 }, comment_chars.
+comment_chars --> [].
+
+
+% Module
+module(module(Start, Data, Funcs)) -->
+    ws, "(", "module", ws,
+    start(Start),
+    data_segments(Data),
+    functions(Funcs),
+    ws, ")", ws.
+
+start(N) --> "(", "start", ws, integer(N), ")", ws.
+
+
+% Data segments
+
+data_segments([D|T]) --> data_segment(D), data_segments(T).
+data_segments([]) --> [].
+
+data_segment(data(Address, Str)) -->
+    "(", "data", ws, integer(Address), ws, string_literal(Str), ")", ws.
+
+
+% Functions
+
+functions([F|T]) --> function(F), functions(T).
+functions([]) --> [].
+
+function(func(Args, Locals, Results, Instrs)) -->
+    "(", "func", ws,
+    args(Args),
+    locals(Locals),
+    results(Results),
+    instructions(Instrs),
+    ")", ws.
+
+args(N) --> "(", "args", ws, integer(N), ")", ws.
+locals(N) --> "(", "locals", ws, integer(N), ")", ws.
+results(N) --> "(", "results", ws, integer(N), ")", ws.
+
+
+% Instructions
+
+instructions([I|T]) --> instruction(I), instructions(T).
+instructions([]) --> [].
+
+% Numeric instructions
+instruction(i32_const(X)) --> "i32.const", ws, integer(X), ws.
+instruction(i32_add) --> "i32.add", ws.
+instruction(i32_sub) --> "i32.sub", ws.
+instruction(i32_mul) --> "i32.mul", ws.
+instruction(i32_div_s) --> "i32.div_s", ws.
+instruction(i32_lt_s) --> "i32.lt_s", ws.
+instruction(i32_le_s) --> "i32.le_s", ws.
+instruction(i32_gt_s) --> "i32.gt_s", ws.
+instruction(i32_ge_s) --> "i32.ge_s", ws.
+instruction(i32_eqz) --> "i32.eqz", ws.
+instruction(i32_eq) --> "i32.eq", ws.
+instruction(i32_ne) --> "i32.ne", ws.
+instruction(i32_and) --> "i32.and", ws.
+instruction(i32_or) --> "i32.or", ws.
+instruction(i32_xor) --> "i32.xor", ws.
+
+% Locals
+instruction(local_get(N)) --> "local.get", ws, integer(N), ws.
+instruction(local_set(N)) --> "local.set", ws, integer(N), ws.
+instruction(local_tee(N)) --> "local.tee", ws, integer(N), ws.
+
+% Calls
+instruction(call(X)) --> "call", ws, (integer(X) ; primitive(X)), ws.
+primitive(read_int) --> "read_int".
+primitive(rand_int) --> "rand_int".
+primitive(print_int) --> "print_int".
+primitive(print) --> "print".
+primitive(println) --> "println".
+
+% Control / blocks
+instruction(block(Instrs)) --> "block", ws, block_instructions(Instrs), "end", ws.
+instruction(loop(Instrs)) --> "loop", ws, block_instructions(Instrs), "end", ws.
+instruction(if(TrueBlock, FalseBlock)) -->
+    "if", ws, block_instructions(TrueBlock),
+    ( "else", ws, block_instructions(FalseBlock) ; { FalseBlock = [] } ),
+    "end", ws.
+
+% Nested blocks
+block_instructions([I|T]) --> instruction(I), block_instructions(T).
+block_instructions([]) --> [].
+
+% Branching
+instruction(br(N)) --> "br", ws, integer(N), ws.
+instruction(br_if(N)) --> "br_if", ws, integer(N), ws.
+instruction(return) --> "return", ws.
+
+% Misc
+instruction(drop) --> "drop", ws.
+instruction(nop) --> "nop", ws.
+instruction(unreachable) --> "unreachable", ws.
+
+
+% Integers
+
+integer(N) --> digits(Ds), { number_codes(N, Ds) }.
+digits([D|T]) --> [D], { char_type(D,digit) }, digits_rest(T).
+digits_rest([D|T]) --> [D], { char_type(D,digit) }, digits_rest(T).
+digits_rest([]) --> [].
+
+
+% Strings
+
+% string literal: opening quote, inhoud, sluiting quote
+string_literal(Str) -->
+    [34],                 % opening "
+    string_content(Codes),
+    [34],                 % sluiting "
+    { string_codes(Str, Codes) }.
+
+% string content: kan escape sequence of gewoon karakter zijn
+string_content([C|T]) --> escape_sequence(C), string_content(T).
+string_content([C|T]) --> [C], { C \= 34, C \= 92 }, string_content(T). % " of \ afsluiten string
+string_content([]) --> [].
+
+% escape sequence: \NNN, 1 tot 3 digits
+escape_sequence(C) -->
+    [92],                 % backslash \
+    digits_codes(Ds),
+    { number_codes(C, Ds) }.
+
+% digits_codes: 1 tot 3 cijfers
+digits_codes([D]) --> digit(D).
+digits_codes([D|T]) --> digit(D), digits_codes_rest(T).
+
+digits_codes_rest([D]) --> digit(D).
+digits_codes_rest([D|T]) --> digit(D), digits_codes_rest(T).
+
+digit(D) --> [D], { char_type(D, digit) }.

@@ -1,0 +1,7 @@
+(module
+ (start 0)
+
+ (func (args 1) (locals 0) (results 0)
+   local.get 0
+ )
+)
