@@ -83,6 +83,9 @@ Inputs: [4], State: trap
 ```
 De output moet voor elk uitvoeringspad in het programma, een set teruggeven als die waarden in een trap kunnen resulteren. Dit betekent dat je voor een programma die crasht bij een waarde kleiner dan 10 maar 1 waarde, bijvoorbeeld `0` kan teruggeven aangezien de andere waarden `1,2,3,4,5,6,7,8,9` zich in hetzelfde uitvoeringspad bevinden en we maar 1 waarde per pad willen. De inputs worden teruggegeven in een lijst, hierbij is het eerste element de eerste ingelezen input, het tweede element de tweede ingelezen input enzoverder. Aangezien dit programma maar één input leest heeft de lijst hier dus slechts één element.
 
+> [!NOTE]
+> Probeer ook na te denken over hoe je dit efficiënt kan doen zodanig dat je niet teveel tijd spendeert aan het bezoeken van paden die je al bezocht hebt.
+
 De analyse van oneindige programma's kan oneindig lang duren. Om deze programma's te analyseren vragen we dat je ook een optionele parameter ondersteund die het aantal instructies kan beperken. Als deze bijvoorbeeld `1000` is dan moet de analyse vanaf de start van het te analyseren programma maximaal `1000` instructies uitvoeren.
 
 ### Vinden van alle paden
@@ -129,7 +132,7 @@ We hebben ervoor gekozen een subset van WebAssembly te ondersteunen waarbij alle
 - `block` Start een blok code, een blok moet beëindigd worden met een `end` instructie. Als gesprongen zal worden naar deze blok dan zal de code verdergaan na de `end` instructie. In dit geval spring je dus naar het einde.
 - `loop` Gelijkaardig aan `block` start deze instructie een blok code die met `end` beëindigd moet worden. Anders dan bij `block` zal bij het springen naar deze blok code, de code verdergaan bij het begin.
 - `if TrueBlock [else FalseBlock] end` Deze instructies werken zoals een gewone `if` uit andere programmeertalen, afhankelijk van de conditie zal het true of false blok uitgevoerd worden. Voor de conditie zal `if` de bovenste waarde van de stapel nemen. Als deze verschilt van `0` dan zal de code binnen het `if` blok uitgevoerd worden. Als dat niet het geval is zal het optionele `else` geval uitgevoerd worden. Als er geen `else` is dan zal de code gewoon verder gaan na de `end`. Net als de `block` instructie kan je ook naar een blok gemaakt door `if` springen, in dit geval zal altijd naar het einde `end` gesprongen worden net zoals bij `block`.
-- `br X` Met deze instructie spring je naar een `block`, `loop` of `if` blok. De `X` zal bepalen hoe ver je sprint, zo springt `br 0` naar het binnenste blok en zal `br 1` springen naar het blok daar nog net buiten, `br 2` daar nog eens buiten. Additioneel zullen de elementen die in dit blok op de stapel geplaatst werden verwijderd worden wanneer je uit het blok springt of het blok via een end instructie verlaat.
+- `br X` Met deze instructie spring je naar een `block`, `loop` of `if` blok. De `X` zal bepalen hoe ver je sprint, zo springt `br 0` naar het binnenste blok en zal `br 1` springen naar het blok daar nog net buiten, `br 2` daar nog eens buiten.
 
   **Voorbeeld:**
   In het volgende programma zal `br 1` springen naar niet het blok direct rond de instructie maar naar het tweede blok. Omdat het een `block` instructie is zal de interpreter springen naar het einde. Hierdoor zal dit programma als resultaat `1` printen. Het printen van `0` zal overgeslagen worden.
@@ -153,7 +156,7 @@ We hebben ervoor gekozen een subset van WebAssembly te ondersteunen waarbij alle
 - `nop` Deze instructie doet niets.
 
 ## Geheugen
-Naast de stapel heeft elke module ook een blok geheugen, voor de eenvoudigheid kan deze alleen gebruikt worden om data zoals strings op te slaan. Deze strings kunnen dan later afgedrukt worden met de `print` functie. Het WebAssembly geheugen is een blok geheugen van 64 KiB of dus 65 536 bytes. Standaard is het geheugen leeg en bevat het overal nul. Met de `(data <adres> <data>)` syntax die je zal moeten ondersteunen in de parser kan je in dit geheugen data plaatsen, bijvoorbeeld de string "abcd" op locatie `0`, `(data 0 "\97\98\99\100")`. Hierbij stellen we elk teken voor als een backslash met daarna de decimale ascii waarde. Met de `print` functie kan je deze string dan afdrukken met de volgende sequentie instructies:
+Naast de stapel heeft elke module ook een blok geheugen, voor de eenvoudigheid kan deze alleen gebruikt worden om data zoals strings op te slaan. Deze strings kunnen dan later afgedrukt worden met de `print` functie. Het WebAssembly geheugen bestaat uit pages waarvan 1 page een blok is van 64 KiB of dus 65 536 bytes. In dit project bestaat het geheugen altijd uit 16 pages (in totaal dus 16 * 65 536 bytes), als je daar buiten zou lezen of schrijven dan krijg je een error. Standaard is het geheugen leeg en bevat het overal nul. Met de `(data <adres> <data>)` syntax die je zal moeten ondersteunen in de parser kan je in dit geheugen data plaatsen, bijvoorbeeld de string "abcd" op locatie `0`, `(data 0 "\97\98\99\100")`. Hierbij stellen we elk teken voor als een backslash met daarna de decimale ascii waarde. Met de `print` functie kan je deze string dan afdrukken met de volgende sequentie instructies:
 ```wasm
 i32.const 0
 call print
@@ -290,6 +293,7 @@ Het project moet ingediend zijn op 8/05/2026 om 20:00 CEST.
   - Vragen worden mogelijks **niet** meer beantwoord tijdens de laatste
     week voor de finale deadline.
 - Zorg ervoor dat je project testbaar is aan de hand van input/output en voldoet aan enkele publieke unit-tests die we later beschikbaar zullen stellen.
+  - Probeer zeker de programma's in de `examples` map, je mag in deze map ook zelf extra voorbeeld programma's toevoegen.
 
 # Vragen
 
