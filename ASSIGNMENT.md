@@ -70,7 +70,7 @@ assert(read_int(0, 30) >= 10);
 ```
 Een mogelijke input die zal resulteren in een trap is hier dus `4` aangezien dit getal een mogelijke return waarde is van `read_int` die zich in dit geval tussen `0` en `30` moet bevinden. Aangezien we maar één enkele input die resulteert in een trap per uitvoeringspad willen is het ook voldoende om alleen `4` als output terug te geven, andere opties zoals `0`,`1`,`2`,`3`,`5`,`6`,`7`,`8`,`9` zijn ook geldige resultaten maar je analyse moet maar één van deze opties teruggeven.
 
-Dit programma is het eerste voorbeeld waar meerdere uitvoeringspaden zijn, zo is er een pad waarbij de conditie van de `if` waar is, en een pad waarde conditie niet waar is. In totaal zijn er hier dus twee uitvoeringspaden. Eerder hadden we vermeld dat de analyse voor elk uitvoeringspad die in een trap zal resulteren één set inputs moet teruggeven om die trap te bereiken. Voor het ene uitvoeringspad heeft de analyse al `4` gevonden. Voor het andere uitvoeringspad waarbij de `if` conditie niet waar is kan je niet in een trap terechtkomen, voor dit uitvoeringspad zal de analyse dus geen inputs teruggeven.
+Dit programma is het eerste voorbeeld waar meerdere uitvoeringspaden zijn, zo is er een pad waarbij de conditie van de `if` waar is, en een pad waarvan de conditie niet waar is. In totaal zijn er hier dus twee uitvoeringspaden. Eerder hadden we vermeld dat de analyse voor elk uitvoeringspad die in een trap zal resulteren één set inputs moet teruggeven om die trap te bereiken. Voor het ene uitvoeringspad heeft de analyse al `4` gevonden. Voor het andere uitvoeringspad waarbij de `if` conditie niet waar is kan je niet in een trap terechtkomen, voor dit uitvoeringspad zal de analyse dus geen inputs teruggeven.
 
 #### Gebruik
 Het uiteindelijke doel van het project is dat je een programma kan analyseren door het volgende commando uit te voeren.
@@ -103,7 +103,7 @@ Inputs: [13], State: finished
 Hier zal de `4` er dus voor zorgen dat het pad `read_int(0, 30) < 10` uitgevoerd wordt terwijl de `13` het pad `read_int(0, 30) >= 10` zal uitvoeren.
 
 ## Instructies
-We hebben ervoor gekozen een subset van WebAssembly te ondersteunen waarbij alleen maar met signed 32 bit integers gewerkt kan worden. Hieronder geven we een oplijsting van welke instructies je project moet kunnen gebruiken.
+We hebben ervoor gekozen een subset van WebAssembly te ondersteunen waarbij alleen maar met signed 32 bit integers gewerkt kan worden. Hieronder geven we een oplijsting van welke instructies je project moet kunnen gebruiken. Instructies nemen elementen van de stapel, doen een bepaalde operatie en plaatsen dan mogelijks terug elementen op de stapel. In het geval dat een instructie een element van de stapel wil nemen en dit element niet bestaat dan moet je interpreter stoppen. Dit zijn namelijk ongeldige WebAssembly programma's die niet door de [validatie](https://webassembly.github.io/spec/core/valid/index.html) stap zouden geraken.
 
 ### Numerieke instructies
 - `i32.const X` Plaats een constante `X` op de stapel.
@@ -132,7 +132,7 @@ We hebben ervoor gekozen een subset van WebAssembly te ondersteunen waarbij alle
 - `block` Start een blok code, een blok moet beëindigd worden met een `end` instructie. Als gesprongen zal worden naar deze blok dan zal de code verdergaan na de `end` instructie. In dit geval spring je dus naar het einde.
 - `loop` Gelijkaardig aan `block` start deze instructie een blok code die met `end` beëindigd moet worden. Anders dan bij `block` zal bij het springen naar deze blok code, de code verdergaan bij het begin.
 - `if TrueBlock [else FalseBlock] end` Deze instructies werken zoals een gewone `if` uit andere programmeertalen, afhankelijk van de conditie zal het true of false blok uitgevoerd worden. Voor de conditie zal `if` de bovenste waarde van de stapel nemen. Als deze verschilt van `0` dan zal de code binnen het `if` blok uitgevoerd worden. Als dat niet het geval is zal het optionele `else` geval uitgevoerd worden. Als er geen `else` is dan zal de code gewoon verder gaan na de `end`. Net als de `block` instructie kan je ook naar een blok gemaakt door `if` springen, in dit geval zal altijd naar het einde `end` gesprongen worden net zoals bij `block`.
-- `br X` Met deze instructie spring je naar een `block`, `loop` of `if` blok. De `X` zal bepalen hoe ver je sprint, zo springt `br 0` naar het binnenste blok en zal `br 1` springen naar het blok daar nog net buiten, `br 2` daar nog eens buiten.
+- `br X` Met deze instructie spring je naar een `block`, `loop` of `if` blok. De `X` zal bepalen hoe ver je springt, zo springt `br 0` naar het binnenste blok en zal `br 1` springen naar het blok daar nog net buiten, `br 2` daar nog eens buiten.
 
   **Voorbeeld:**
   In het volgende programma zal `br 1` springen naar niet het blok direct rond de instructie maar naar het tweede blok. Omdat het een `block` instructie is zal de interpreter springen naar het einde. Hierdoor zal dit programma als resultaat `1` printen. Het printen van `0` zal overgeslagen worden.
@@ -176,7 +176,7 @@ De bestanden die je moet kunnen uitvoeren en analyseren hebben de volgende vorm.
 
 Een programma is opgebouwd uit een module. Deze module bevat enkele eigenschappen, de start functie die eerst opgeroepen bij de start van het programma en een optioneel data segment. Daarnaast bevat de module functies. Functies hebben elk een aantal argumenten, het aantal lokale variabelen en het aantal waarden die de functie zal teruggeven. Naast deze eigenschappen bevat elke functie ook een reeks instructies.
 
-In het tekstuele formaat mogen er tussen een instructie en zijn argumenten (bijvoorbeeld `i32.const 3`, hierbij is `3` het argument) spaties staan. Hetzelfde geldt voor eigenschappen `(args 0)`. Daarnaast mogen er ook lege lijnen tussen instructies en mag er voor en na instructies ook spacing zijn. Daarnaast mag er ook commentaar achter instructies of op aparte lijnen geplaatst worden. Commentaar start met `;;`.
+In het tekstuele formaat mogen er tussen een instructie en zijn argumenten (bijvoorbeeld `i32.const 3`, hierbij is `3` het argument) spaties staan. Hetzelfde geldt voor eigenschappen `(args 0)`. Daarnaast mogen er ook lege lijnen tussen instructies en mag er voor en na instructies ook spacing zijn. Daarnaast mag er ook commentaar achter instructies of op aparte lijnen geplaatst worden. Commentaar start met `;;` en eindigt op het einde van de lijn.
 
 ```wasm
 (module 
