@@ -4,11 +4,14 @@
 
 :- discontiguous parser:instruction/3.
 
+
+
+
 % Entry point
 parse(File, Module) :-
     read_file_to_string(File, String, []),
     string_codes(String, Codes),
-    phrase(module(Module), Codes).
+    once(phrase(module(Module), Codes)).
 
 
 % Whitespace includes comments
@@ -129,29 +132,12 @@ digits_rest([]) --> [].
 
 % Strings
 
-% string literal: opening quote, inhoud, sluiting quote
+% Bewaar de inhoud tussen quotes letterlijk als string, zonder escape-conversie.
 string_literal(Str) -->
-    [34],                 % opening "
-    string_content(Codes),
-    [34],                 % sluiting "
+    [34],
+    raw_string_codes(Codes),
+    [34],
     { string_codes(Str, Codes) }.
 
-% string content: kan escape sequence of gewoon karakter zijn
-string_content([C|T]) --> escape_sequence(C), string_content(T).
-string_content([C|T]) --> [C], { C \= 34, C \= 92 }, string_content(T). % " of \ afsluiten string
-string_content([]) --> [].
-
-% escape sequence: \NNN, 1 tot 3 digits
-escape_sequence(C) -->
-    [92],                 % backslash \
-    digits_codes(Ds),
-    { number_codes(C, Ds) }.
-
-% digits_codes: 1 tot en met 3 cijfers
-digits_codes([D]) --> digit(D).
-digits_codes([D|T]) --> digit(D), digits_codes_rest(T).
-
-digits_codes_rest([D]) --> digit(D).
-digits_codes_rest([D|T]) --> digit(D), digits_codes_rest(T).
-
-digit(D) --> [D], { char_type(D, digit) }.
+raw_string_codes([C|T]) --> [C], { C =\= 34 }, raw_string_codes(T).
+raw_string_codes([]) --> [].

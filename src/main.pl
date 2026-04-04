@@ -1,16 +1,25 @@
-:- use_module(parser).
+#!/usr/bin/env swipl
+:- use_module(runner).
 
 main :-
     current_prolog_flag(argv, Argv),
-    run(Argv).
+    dispatch(Argv).
 
-run([File|_]) :-
-    parse(File, Module),
-    writeln("Parsed module:"),
-    portray_clause(Module).
+dispatch([run, File|_]) :-
+    run_file(File, result(Status, Returns)),
+    format('State: ~w~n', [Status]),
+    format('Returns: ~w~n', [Returns]).
 
-run([]) :-
-    writeln("Usage: swipl main.pl <file.pwat>"),
+dispatch([analyse, _File|_]) :-
+    writeln('analyse mode is nog niet geimplementeerd'),
+    halt(1).
+
+dispatch([paths, _File|_]) :-
+    writeln('paths mode is nog niet geimplementeerd'),
+    halt(1).
+
+dispatch(_) :-
+    writeln('Usage: swipl -q -s src/main.pl -- <run|analyse|paths> <file.pwat>'),
     halt(1).
 
 :- initialization(main, main).
