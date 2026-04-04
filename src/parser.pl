@@ -147,7 +147,7 @@ escape_sequence(C) -->
     digits_codes(Ds),
     { number_codes(C, Ds) }.
 
-% digits_codes: 1 tot 3 cijfers
+% digits_codes: 1 tot en met 3 cijfers
 digits_codes([D]) --> digit(D).
 digits_codes([D|T]) --> digit(D), digits_codes_rest(T).
 
