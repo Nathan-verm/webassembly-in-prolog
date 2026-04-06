@@ -1,7 +1,7 @@
 (module
  (start 0)
 
- (func (args 0) (locals 0) (results 0)
+ (func (args 0) (locals 0) (results 1)
    i32.const 3
    i32.const 5
    i32.add

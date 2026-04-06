@@ -1,5 +1,6 @@
 :- module(memory_initializer, [build_memory/2, memory_slice/4]).
 
+build_memory([], []).
 build_memory(DataSegments, Memory) :-
     build_memory_helper(DataSegments, [], Pairs),
     sort(Pairs, Memory).
