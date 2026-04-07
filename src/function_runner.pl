@@ -79,11 +79,11 @@ exec_instruction(i32_div_s, _Module, Locals, Locals, Stack, Stack, _Memory, trap
 exec_instruction(drop, _Module, Locals, Locals, [_|Rest], Rest, _Memory, continue).
 exec_instruction(drop, _Module, Locals, Locals, Stack, Stack, _Memory, trap).
 
-
 exec_instruction(nop, _Module, Locals, Locals, Stack, Stack, _Memory, continue).
 
-
 exec_instruction(unreachable, _Module, Locals, Locals, Stack, Stack, _Memory, trap).
+
+
 
 exec_instruction(local_get(N), _Module, Locals, Locals, Stack, [Value|Stack], _Memory, continue) :-
     nth0(N, Locals, Value), !.
@@ -117,6 +117,10 @@ exec_instruction(call(Target), _Module, Locals, Locals, StackIn, StackOut, Memor
 exec_instruction(call(_Target), _Module, Locals, Locals, Stack, Stack, _Memory, trap).
 
 exec_instruction(return, _Module, Locals, Locals, Stack, Stack, _Memory, returned).
+
+% exec_instructions([Instr|Rest], Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
+% exec_instruction(block(Instructions), LocalsIn, LocalsOut, StackIn, StackOut, Memory, continue) :-
+%     exec_instructions(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, continue).
 
 % normaal niet voorkomen omdat parser al zou moeten falen, maar voor zekerheid
 exec_instruction(_Unsupported, _Module, Locals, Locals, Stack, Stack, _Memory, trap).

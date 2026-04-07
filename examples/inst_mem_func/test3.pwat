@@ -1,0 +1,16 @@
+(module
+ (start 0)
+
+  (data 0 "\97")
+
+  (data 1 "\98")
+
+  (data 3 "\99")
+
+  (data 6 "\97\98\99")
+
+
+ (func (args 0) (locals 1) (results 0)
+   i32.const 1
+ )
+)

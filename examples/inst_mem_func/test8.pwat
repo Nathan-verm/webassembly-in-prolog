@@ -1,0 +1,21 @@
+(module
+  (start 0)
+
+  ;; main
+  (func (args 0) (locals 1) (results 1)
+    i32.const 0
+    i32.const 100
+    call read_int     ;; lees getal tussen 0 en 100
+    local.set 0       ;; bewaar invoer in local0
+
+    local.get 0
+    call 1            ;; roep add10(x) aan
+  )
+
+  ;; add10(x) = x + 10
+  (func (args 1) (locals 0) (results 1)
+    local.get 0
+    i32.const 10
+    i32.add
+  )
+)
