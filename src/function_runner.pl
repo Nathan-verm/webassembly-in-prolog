@@ -118,9 +118,31 @@ exec_instruction(call(_Target), _Module, Locals, Locals, Stack, Stack, _Memory, 
 
 exec_instruction(return, _Module, Locals, Locals, Stack, Stack, _Memory, returned).
 
-% exec_instructions([Instr|Rest], Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
-% exec_instruction(block(Instructions), LocalsIn, LocalsOut, StackIn, StackOut, Memory, continue) :-
-%     exec_instructions(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, continue).
+exec_instruction(block(Instructions), Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, continue) :-
+    exec_instructions(Instructions, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal),
+    handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, continue).
+
+% exec_instruction(loop(Instructions), Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
+%     run_loop(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal).
+
+% exec_instruction(if(TrueBlock, FalseBlock), Module, LocalsIn, LocalsOut, [Cond|StackIn], StackOut, Memory, Signal) :-
+%     ( Cond =\= 0 -> Block = TrueBlock ; Block = FalseBlock ),
+%     exec_instructions(Block, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal),
+%     handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal).
+% exec_instruction(if(_TrueBlock, _FalseBlock), _Module, Locals, Locals, Stack, Stack, _Memory, trap).
+
+exec_instruction(br(Value), _Module, Locals, Locals, Stack, Stack, _Memory, break(Value)) :-
+    integer(Value),
+    Value >= 0,
+    !.
+exec_instruction(br(_Value), _Module, Locals, Locals, Stack, Stack, _Memory, trap).
+
+% exec_instruction(br_if(Value), _Module, Locals, Locals, [Cond|Stack], Stack, _Memory, Signal) :-
+%     integer(Value),
+%     Value >= 0,
+%     ( Cond =\= 0 -> Signal = break(Value) ; Signal = continue ),
+%     !.
+% exec_instruction(br_if(_Value), _Module, Locals, Locals, Stack, Stack, _Memory, trap).
 
 % normaal niet voorkomen omdat parser al zou moeten falen, maar voor zekerheid
 exec_instruction(_Unsupported, _Module, Locals, Locals, Stack, Stack, _Memory, trap).
@@ -134,6 +156,27 @@ binary_op(Stack, Stack, _Op, trap). % als er al een trap gegenereerd werd => doe
 eval_binop(+, A, B, R) :- R is A + B.
 eval_binop(-, A, B, R) :- R is A - B.
 eval_binop(*, A, B, R) :- R is A * B.
+
+handle_block_signal(continue, Locals, Stack, Locals, Stack, continue).
+handle_block_signal(returned, Locals, Stack, Locals, Stack, returned).
+handle_block_signal(trap, Locals, Stack, Locals, Stack, trap).
+handle_block_signal(break(0), Locals, Stack, Locals, Stack, continue).
+handle_block_signal(break(N), Locals, Stack, Locals, Stack, break(N1)) :-
+    N > 0,
+    N1 is N - 1.
+
+run_loop(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
+    exec_instructions(Instructions, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal),
+    handle_loop_signal(InnerSignal, Instructions, Module, Locals1, LocalsOut, Stack1, StackOut, Memory, Signal).
+
+handle_loop_signal(continue, _Instructions, _Module, Locals, Locals, Stack, Stack, _Memory, continue).
+handle_loop_signal(returned, _Instructions, _Module, Locals, Locals, Stack, Stack, _Memory, returned).
+handle_loop_signal(trap, _Instructions, _Module, Locals, Locals, Stack, Stack, _Memory, trap).
+handle_loop_signal(break(0), Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
+    run_loop(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal).
+handle_loop_signal(break(N), _Instructions, _Module, Locals, Locals, Stack, Stack, _Memory, break(N1)) :-
+    N > 0,
+    N1 is N - 1.
 
 call_internal(Index, Module, StackIn, StackOut, Memory, Signal) :-
     Module = module(_Start, _Data, Funcs),

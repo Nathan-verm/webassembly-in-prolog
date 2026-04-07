@@ -4,14 +4,18 @@
   (data 0 "\97")
   (data 1 "\97\98")
 
+  ;; func should return 10 and not 30
   (func (args 0) (locals 0) (results 1)
     block
     i32.const 10
+    br 0
     i32.const 20
     i32.add
-    end
+    end ;; jump to here
 
   )
+
+
 
 
 )
