@@ -1,0 +1,15 @@
+(module
+  (start 0)
+  (func (args 0) (locals 0) (results 5)
+    ;; test 1: return vanuit top-level => geeft 42 terug
+    i32.const 10
+    i32.const 20
+    i32.const 30
+    i32.const 40
+    i32.const 50
+
+    return
+    ;; deze instructies worden nooit uitgevoerd
+    i32.const 999
+  )
+)
