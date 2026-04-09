@@ -88,7 +88,6 @@ exec_instruction(nop, _Module, Locals, Locals, Stack, Stack, _Memory, continue).
 exec_instruction(unreachable, _Module, Locals, Locals, Stack, Stack, _Memory, trap).
 
 
-
 exec_instruction(local_get(N), _Module, Locals, Locals, Stack, [Value|Stack], _Memory, continue) :-
     nth0(N, Locals, Value), !.
 % geen n'de local gevonden => trap
@@ -128,6 +127,13 @@ exec_instruction(block(Instructions), Module, LocalsIn, LocalsOut, StackIn, Stac
     handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, continue).
 
 
+exec_instruction(br(Value), _Module, Locals, Locals, Stack, Stack, _Memory, break(Value)) :-
+    integer(Value),
+    Value >= 0,
+    !.
+
+exec_instruction(br(_Value), _Module, Locals, Locals, Stack, Stack, _Memory, trap).
+
 
 % Conditie is onwaar (0) => voer FalseBlock uit
 exec_instruction(if(_TrueBlock, FalseBlock), Module, LocalsIn, LocalsOut, [0|StackIn], StackOut, Memory, Signal) :-
@@ -147,22 +153,27 @@ exec_instruction(if(_TrueBlock, _FalseBlock), _Module, Locals, Locals, [], [], _
 exec_instruction(if(_TrueBlock, _FalseBlock), _Module, Locals, Locals, Stack, Stack, _Memory, trap).
 
 
+% conditie is waar (niet 0) => break
+exec_instruction(br_if(Value), _Module, Locals, Locals, [Cond|Stack], Stack, _Memory, break(Value)) :-
+    integer(Value),
+    Value >= 0,
+    Cond =\= 0.
+
+% conditie is onwaar (0) => continue
+exec_instruction(br_if(Value), _Module, Locals, Locals, [0|Stack], Stack, _Memory, continue) :-
+    integer(Value),
+    Value >= 0.
+
+% ongeldige waarde => trap
+exec_instruction(br_if(_Value), _Module, Locals, Locals, Stack, Stack, _Memory, trap).
+
+
+
 
 % exec_instruction(loop(Instructions), Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
 %     run_loop(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal).
 
-exec_instruction(br(Value), _Module, Locals, Locals, Stack, Stack, _Memory, break(Value)) :-
-    integer(Value),
-    Value >= 0,
-    !.
-exec_instruction(br(_Value), _Module, Locals, Locals, Stack, Stack, _Memory, trap).
 
-% exec_instruction(br_if(Value), _Module, Locals, Locals, [Cond|Stack], Stack, _Memory, Signal) :-
-%     integer(Value),
-%     Value >= 0,
-%     ( Cond =\= 0 -> Signal = break(Value) ; Signal = continue ),
-%     !.
-% exec_instruction(br_if(_Value), _Module, Locals, Locals, Stack, Stack, _Memory, trap).
 
 % normaal niet voorkomen omdat parser al zou moeten falen, maar voor zekerheid
 exec_instruction(_Unsupported, _Module, Locals, Locals, Stack, Stack, _Memory, trap).
