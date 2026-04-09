@@ -1,0 +1,25 @@
+(module
+  (start 0)
+  (data 0 "\97")
+  (data 1 "\97\98")
+  
+  (func (args 0) (locals 1) (results 1)
+    i32.const 10
+    local.set 0
+    loop
+      ;; local 0 = local 0 + 10
+      local.get 0
+      i32.const 10
+      i32.add
+      local.set 0
+
+      ;; blijf loopen zolang local 0 < 100
+      local.get 0
+      i32.const 100
+      i32.lt_s
+      br_if 0 ;; moet naar loop terug springen niet naar end
+    end
+    local.get 0
+    ;; zou 100 moeten returnen
+  )
+)

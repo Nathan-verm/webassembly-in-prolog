@@ -80,6 +80,39 @@ exec_instruction(i32_div_s, _Module, Locals, Locals, [B, A|Rest], [Q|Rest], _Mem
 exec_instruction(i32_div_s, _Module, Locals, Locals, Stack, Stack, _Memory, trap).
 
 
+exec_instruction(i32_lt_s, _Module, Locals, Locals, StackIn, StackOut, _Memory, Signal) :-
+    binary_op(StackIn, StackOut, lt_s, Signal).
+
+exec_instruction(i32_le_s, _Module, Locals, Locals, StackIn, StackOut, _Memory, Signal) :-
+    binary_op(StackIn, StackOut, le_s, Signal).
+
+exec_instruction(i32_gt_s, _Module, Locals, Locals, StackIn, StackOut, _Memory, Signal) :-
+    binary_op(StackIn, StackOut, gt_s, Signal).
+
+exec_instruction(i32_ge_s, _Module, Locals, Locals, StackIn, StackOut, _Memory, Signal) :-
+    binary_op(StackIn, StackOut, ge_s, Signal).
+
+exec_instruction(i32_eq, _Module, Locals, Locals, StackIn, StackOut, _Memory, Signal) :-
+    binary_op(StackIn, StackOut, eq, Signal).
+
+exec_instruction(i32_ne, _Module, Locals, Locals, StackIn, StackOut, _Memory, Signal) :-
+    binary_op(StackIn, StackOut, ne, Signal).
+
+exec_instruction(i32_and, _Module, Locals, Locals, StackIn, StackOut, _Memory, Signal) :-
+    binary_op(StackIn, StackOut, i32_and, Signal).
+
+exec_instruction(i32_or, _Module, Locals, Locals, StackIn, StackOut, _Memory, Signal) :-
+    binary_op(StackIn, StackOut, i32_or, Signal).
+
+exec_instruction(i32_xor, _Module, Locals, Locals, StackIn, StackOut, _Memory, Signal) :-
+    binary_op(StackIn, StackOut, i32_xor, Signal).
+
+% i32_eqz is unair: pop 1 waarde, push 1 of 0
+exec_instruction(i32_eqz, _Module, Locals, Locals, [A|Rest], [R|Rest], _Memory, continue) :-
+    ( A =:= 0 -> R = 1 ; R = 0 ).
+exec_instruction(i32_eqz, _Module, Locals, Locals, Stack, Stack, _Memory, trap).
+
+
 exec_instruction(drop, _Module, Locals, Locals, [_|Rest], Rest, _Memory, continue).
 exec_instruction(drop, _Module, Locals, Locals, Stack, Stack, _Memory, trap).
 
@@ -168,10 +201,8 @@ exec_instruction(br_if(Value), _Module, Locals, Locals, [0|Stack], Stack, _Memor
 exec_instruction(br_if(_Value), _Module, Locals, Locals, Stack, Stack, _Memory, trap).
 
 
-
-
-% exec_instruction(loop(Instructions), Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
-%     run_loop(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal).
+exec_instruction(loop(Instructions), Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
+    run_loop(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal).
 
 
 
@@ -187,6 +218,15 @@ binary_op(Stack, Stack, _Op, trap). % als er al een trap gegenereerd werd => doe
 eval_binop(+, A, B, R) :- R is A + B.
 eval_binop(-, A, B, R) :- R is A - B.
 eval_binop(*, A, B, R) :- R is A * B.
+eval_binop(lt_s,  A, B, R) :- ( A  <  B -> R = 1 ; R = 0 ).
+eval_binop(le_s,  A, B, R) :- ( A  =< B -> R = 1 ; R = 0 ).
+eval_binop(gt_s,  A, B, R) :- ( A  >  B -> R = 1 ; R = 0 ).
+eval_binop(ge_s,  A, B, R) :- ( A  >= B -> R = 1 ; R = 0 ).
+eval_binop(eq,    A, B, R) :- ( A =:= B -> R = 1 ; R = 0 ).
+eval_binop(ne,    A, B, R) :- ( A =\= B -> R = 1 ; R = 0 ).
+eval_binop(i32_and, A, B, R) :- R is A /\ B.
+eval_binop(i32_or,  A, B, R) :- R is A \/ B.
+eval_binop(i32_xor, A, B, R) :- R is A xor B.
 
 handle_block_signal(continue, Locals, Stack, Locals, Stack, continue).
 handle_block_signal(returned, Locals, Stack, Locals, Stack, returned).
