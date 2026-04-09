@@ -25,9 +25,10 @@
         local.set 0
 
         ;; Print the number for debug purposes:
-        ;;local.get 0
-        ;;call print_int
-
+        ;; local.get 0
+        ;; call print_int
+        ;;
+        ;; return
         loop
             i32.const 0
             i32.const 100
@@ -58,6 +59,7 @@
                     i32.const 28
                     i32.const 7
                     call println
+                    br 2
                 end
             end
         end

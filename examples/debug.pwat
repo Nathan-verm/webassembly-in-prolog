@@ -1,0 +1,62 @@
+(module 
+    (start 0) 
+
+    ;; "Geef een getal in:"
+    (data 0 "\71\101\101\102\32\101\101\110\32\103\101\116\97\108\32\105\110\58")
+
+    ;; "hoger"
+    (data 18 "\104\111\103\101\114")
+
+    ;; "lager"
+    (data 23 "\108\97\103\101\114")
+
+    ;; "correct"
+    (data 28 "\99\111\114\114\101\99\116")
+
+    ;; Main function
+    (func (args 0) (locals 2) (results 0)
+        i32.const 0
+        i32.const 18
+        call println
+
+        i32.const 0
+        i32.const 100
+        call rand_int
+        local.set 0
+
+
+        ;; Print the number for debug purposes:
+        ;; local.get 0
+        ;; call print_int
+        ;;
+        loop
+    i32.const 0
+    i32.const 100
+    call read_int
+    local.set 1
+    local.get 1
+    local.get 0
+    i32.lt_s
+    if
+        i32.const 18
+        i32.const 5
+        call println
+    else
+        local.get 1
+        local.get 0
+        i32.gt_s
+        if
+            i32.const 23
+            i32.const 5
+            call println
+        else
+            i32.const 28
+            i32.const 7
+            call println
+            br 2
+        end
+    end
+    br 0
+end
+    )
+)

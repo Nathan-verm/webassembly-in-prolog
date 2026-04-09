@@ -33,28 +33,27 @@ primitive_arity(println, 2).
 
 run_primitive(print, [Address, Length], Memory, [], continue) :-
     memory_slice(Memory, Address, Length, Codes),
-    format('~s', [Codes]).
+    format('~s', [Codes]), !.
 
 run_primitive(println, Args, Memory, [], continue) :-
     run_primitive(print, Args, Memory, [], continue),
-    writeln("").
+    writeln(""), !.
 
 run_primitive(print_int, [Value], _Memory, [], continue) :-
-    writeln(Value).
+    writeln(Value), !.
 
 run_primitive(read_int, [Min, Max], _Memory, [Value], continue) :-
-    read_int_between(Min, Max, Value).
+    read_int_between(Min, Max, Value), !.
 
 run_primitive(rand_int, [Min, Max], _Memory, [Value], continue) :-
     MaxMinOne is Max - 1,
-    random_between(Min, MaxMinOne, Value).
+    random_between(Min, MaxMinOne, Value), !.
 
 % should not be possible because parser should already fail but just in case
 run_primitive(_Name, _Args, _Memory, [], trap). 
 
 
 read_int_between(Min, Max, Value) :-
-    writeln('Geef een getal in:'),
     repeat,
     read_line_to_string(user_input, Line),
     catch(number_string(N, Line), _, fail),
@@ -62,7 +61,6 @@ read_int_between(Min, Max, Value) :-
     N < Max,
     Value = N,
     !.
-
 
 pop_n(0, Stack, [], Stack) :- !.
 pop_n(N, [H|T], [H|Rest], StackRest) :-
