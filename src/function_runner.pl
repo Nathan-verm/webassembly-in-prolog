@@ -5,7 +5,7 @@
 execute_function(Index, Args, Module, Memory, Returns, Status) :-
     setup_function(Index, Args, Module, Locals0, Instrs, ResultCount),
     run_function(Instrs, Module, Locals0, Memory, Stack1, Signal),
-    handle_signal(Signal, ResultCount, Stack1, Returns, Status).
+    handle_function_signal(Signal, ResultCount, Stack1, Returns, Status).
 
 % Haalt de functie op en initialiseert locals
 setup_function(Index, Args, Module, Locals0, Instrs, ResultCount) :-
@@ -21,12 +21,14 @@ run_function(Instrs, Module, Locals0, Memory, StackOut, Signal) :-
 
 
 % Verwerkt het eindsignaal van de uitvoering
-handle_signal(trap, _ResultCount, _Stack, [], trap).
+handle_function_signal(trap, _ResultCount, _Stack, [], trap).
 
-handle_signal(continue, ResultCount, Stack, Returns, finished) :-
+% continue => func is finished
+handle_function_signal(continue, ResultCount, Stack, Returns, finished) :-
     take_n(ResultCount, Stack, Returns).
 
-handle_signal(returned, ResultCount, Stack, Returns, finished) :-
+% returned => func is finished
+handle_function_signal(returned, ResultCount, Stack, Returns, finished) :-
     take_n(ResultCount, Stack, Returns).
 
 % zet locals op 0
@@ -40,18 +42,20 @@ zeros(N, [0|T]) :-
     N1 is N - 1,
     zeros(N1, T).
 
+
 exec_instructions([], _Module, Locals, Locals, Stack, Stack, _Memory, continue). % geen instructions meer => result = continue
 
-
-% voert 1 instructie uit en handelt step singal af (continue, ).
+% execute 1 instruction, als singal continue is => ga verder met de rest van de instructies
 exec_instructions([Instr|Rest], Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
-    exec_instruction(Instr, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, StepSignal),
-    ( StepSignal = continue ->
-        exec_instructions(Rest, Module, Locals1, LocalsOut, Stack1, StackOut, Memory, Signal)
-    ; Signal = StepSignal,
-      LocalsOut = Locals1,
-      StackOut = Stack1
-    ).
+    exec_instruction(Instr, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, continue),
+    exec_instructions(Rest, Module, Locals1, LocalsOut, Stack1, StackOut, Memory, Signal).
+
+% execute 1 instruction, als signal niet continue is (step, break...) stop dan met uitvoeren
+% op deze manier zullen we stoppen bij een break
+exec_instructions([Instr|_Rest], Module, LocalsIn, Locals1, StackIn, Stack1, Memory, Signal) :-
+    exec_instruction(Instr, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, Signal),
+    Signal \= continue.
+
 
 
 % alle verschillende mogelijke instructies die we moeten ondersteunen:
@@ -118,18 +122,34 @@ exec_instruction(call(_Target), _Module, Locals, Locals, Stack, Stack, _Memory, 
 
 exec_instruction(return, _Module, Locals, Locals, Stack, Stack, _Memory, returned).
 
+% we gaan in een block, dus we moeten apart het signaal verwerken => break 1 geeft dan break 0 terug etc
 exec_instruction(block(Instructions), Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, continue) :-
     exec_instructions(Instructions, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal),
     handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, continue).
 
+
+
+% Conditie is onwaar (0) => voer FalseBlock uit
+exec_instruction(if(_TrueBlock, FalseBlock), Module, LocalsIn, LocalsOut, [0|StackIn], StackOut, Memory, Signal) :-
+    exec_instructions(FalseBlock, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal),
+    handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal).
+
+% Conditie is waar (niet 0) => voer TrueBlock uit
+exec_instruction(if(TrueBlock, _FalseBlock), Module, LocalsIn, LocalsOut, [Cond|StackIn], StackOut, Memory, Signal) :-
+    Cond =\= 0,
+    exec_instructions(TrueBlock, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal),
+    handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal).
+
+
+% Lege stack => trap
+exec_instruction(if(_TrueBlock, _FalseBlock), _Module, Locals, Locals, [], [], _Memory, trap).
+
+exec_instruction(if(_TrueBlock, _FalseBlock), _Module, Locals, Locals, Stack, Stack, _Memory, trap).
+
+
+
 % exec_instruction(loop(Instructions), Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
 %     run_loop(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal).
-
-% exec_instruction(if(TrueBlock, FalseBlock), Module, LocalsIn, LocalsOut, [Cond|StackIn], StackOut, Memory, Signal) :-
-%     ( Cond =\= 0 -> Block = TrueBlock ; Block = FalseBlock ),
-%     exec_instructions(Block, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal),
-%     handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal).
-% exec_instruction(if(_TrueBlock, _FalseBlock), _Module, Locals, Locals, Stack, Stack, _Memory, trap).
 
 exec_instruction(br(Value), _Module, Locals, Locals, Stack, Stack, _Memory, break(Value)) :-
     integer(Value),

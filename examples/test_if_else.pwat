@@ -1,0 +1,18 @@
+(module
+  (start 0)
+
+  (data 0 "\97")
+  (data 1 "\97\98")
+
+
+  (func (args 0) (locals 0) (results 1)
+    i32.const 1
+    if
+        i32.const 10
+        br 0
+        i32.const 30
+    else
+        i32.const 20
+    end
+  )
+)
