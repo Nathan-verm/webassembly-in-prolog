@@ -9,10 +9,9 @@ dispatch([run, File|_]) :-
     !,
     run_dispatch(File).
 
-dispatch([analyse, _File|_]) :-
-    !,
-    writeln('analyse mode is nog niet geimplementeerd'),
-    halt(1).
+% dispatch([analyse, File, MaxInstructions|_]) :-
+%     !,
+%     analyse_dispatch(File, MaxInstructions).
 
 dispatch([paths, _File|_]) :-
     !,
@@ -34,5 +33,9 @@ run_dispatch(File) :-
 run_dispatch(File) :-
     format(user_error, 'ERROR: uitvoering van ~w mislukt~n', [File]),
     halt(1).
+
+% analyse_dispatch(File, MaxInstructions) :- 
+%     run_file(File, result(Status, Returns))
+
 
 :- initialization(main, main).

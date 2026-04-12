@@ -1,29 +1,30 @@
 :- module(function_runner, [execute_function/6]).
 
 :- use_module(primitive_runner).
+:- use_module(utilities).
 
 execute_function(Index, Args, Module, Memory, Returns, Status) :-
-    setup_function(Index, Args, Module, Locals0, Instrs, ResultCount),
-    run_function(Instrs, Module, Locals0, Memory, Stack1, Signal),
+    setup_function(Index, Args, Module, LocalsIn, Instrs, ResultCount),
+    run_function(Instrs, Module, LocalsIn, Memory, Stack1, Signal),
     handle_function_signal(Signal, ResultCount, Stack1, Returns, Status).
 
 % Haalt de functie op en initialiseert locals
-setup_function(Index, Args, Module, Locals0, Instrs, ResultCount) :-
+setup_function(Index, Args, Module, LocalsIn, Instrs, ResultCount) :-
     Module = module(_Start, _Data, Funcs),
     nth0(Index, Funcs, func(ArgCount, LocalCount, ResultCount, Instrs)),
     length(Args, ArgCount),
-    init_locals(Args, LocalCount, Locals0).
+    init_locals(Args, LocalCount, LocalsIn).
 
 % Voert de instructies uit met een lege startstack
-run_function(Instrs, Module, Locals0, Memory, StackOut, Signal) :-
+run_function(Instrs, Module, LocalsIn, Memory, StackOut, Signal) :-
     Stack0 = [], % elke functie heeft zijn eigen lege stack om mee te werken omdat args en locals niet via stack worden doorgegeven
-    exec_instructions(Instrs, Module, Locals0, _Locals, Stack0, StackOut, Memory, Signal).
+    exec_instructions(Instrs, Module, LocalsIn, _Locals, Stack0, StackOut, Memory, Signal).
 
 
 % Verwerkt het eindsignaal van de uitvoering
 handle_function_signal(trap, _ResultCount, _Stack, [], trap).
 
-% continue => func is finished
+% continue => func is finished, dus return
 handle_function_signal(continue, ResultCount, Stack, Returns, finished) :-
     take_n(ResultCount, Stack, Returns).
 
@@ -31,31 +32,63 @@ handle_function_signal(continue, ResultCount, Stack, Returns, finished) :-
 handle_function_signal(returned, ResultCount, Stack, Returns, finished) :-
     take_n(ResultCount, Stack, Returns).
 
-% zet locals op 0
-init_locals(Args, LocalCount, Locals) :-
-    zeros(LocalCount, ZeroLocals),
-    append(Args, ZeroLocals, Locals).
 
-zeros(0, []) :- !.
-zeros(N, [0|T]) :-
-    N > 0,
-    N1 is N - 1,
-    zeros(N1, T).
-
-
+% TODO dit wordt nooit opgeroepen for some reason
 exec_instructions([], _Module, Locals, Locals, Stack, Stack, _Memory, continue). % geen instructions meer => result = continue
 
-% Voer exact 1 pad per instructie uit: side-effects (print/read) mogen niet door backtracking herhaald worden.
 exec_instructions([Instr|Rest], Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
-    once(exec_instruction(Instr, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, StepSignal)),
+    exec_instruction(Instr, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, StepSignal),
     continue_or_stop(StepSignal, Rest, Module, Locals1, LocalsOut, Stack1, StackOut, Memory, Signal),
     !.
 
+% als continue -> voer volgende instructie uit.
 continue_or_stop(continue, Rest, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
     exec_instructions(Rest, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal).
 
-continue_or_stop(StepSignal, _Rest, _Module, Locals, Locals, Stack, Stack, _Memory, StepSignal) :-
-    StepSignal \= continue.
+% stop als een instructie een instructie een step, return of branch ziet staan. Dan stoppen we hier de uitvoering en geven we deze signal door naar boven.
+continue_or_stop(NotContinue, _Rest, _Module, Locals, Locals, Stack, Stack, _Memory, NotContinue) :-
+    NotContinue \= continue.
+
+
+handle_block_signal(continue, Locals, Stack, Locals, Stack, continue).
+handle_block_signal(returned, Locals, Stack, Locals, Stack, returned).
+handle_block_signal(trap, Locals, Stack, Locals, Stack, trap).
+handle_block_signal(break(0), Locals, Stack, Locals, Stack, continue).
+handle_block_signal(break(N), Locals, Stack, Locals, Stack, break(N1)) :-
+    N > 0,
+    N1 is N - 1.
+
+run_loop(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
+    exec_instructions(Instructions, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal),
+    handle_loop_signal(InnerSignal, Instructions, Module, Locals1, LocalsOut, Stack1, StackOut, Memory, Signal).
+
+handle_loop_signal(continue, _Instructions, _Module, Locals, Locals, Stack, Stack, _Memory, continue).
+handle_loop_signal(returned, _Instructions, _Module, Locals, Locals, Stack, Stack, _Memory, returned).
+handle_loop_signal(trap, _Instructions, _Module, Locals, Locals, Stack, Stack, _Memory, trap).
+handle_loop_signal(break(0), Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
+    run_loop(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal).
+handle_loop_signal(break(N), _Instructions, _Module, Locals, Locals, Stack, Stack, _Memory, break(N1)) :-
+    N > 0,
+    N1 is N - 1.
+
+
+call_internal(Index, Module, StackIn, StackOut, Memory, Signal) :-
+    Module = module(_Start, _Data, Funcs),
+    nth0(Index, Funcs, func(ArgCount, _Locals, _Results, _Instrs)),
+    pop_n(ArgCount, StackIn, RawArgs, StackRest),
+    reverse(RawArgs, Args),
+    execute_function(Index, Args, Module, Memory, Returns, Status),
+    prepare_to_return(Status, Returns, StackIn, StackRest, StackOut, Signal),
+    !.
+
+call_internal(_Index, _Module, Stack, Stack, _Memory, trap).
+
+% trap => maakt niet uit wat we doen gewoon, trap teruggeven en stack behouden
+prepare_to_return(trap, _Returns, StackIn, _StackRest, StackIn, trap).
+
+prepare_to_return(Status, Returns, _StackIn, StackRest, StackOut, continue) :-
+    Status \= trap,
+    append_rev(Returns, StackRest, StackOut).
 
 
 
@@ -208,83 +241,8 @@ exec_instruction(loop(Instructions), Module, LocalsIn, LocalsOut, StackIn, Stack
     run_loop(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal).
 
 
-
 % normaal niet voorkomen omdat parser al zou moeten falen, maar voor zekerheid
 exec_instruction(_Unsupported, _Module, Locals, Locals, Stack, Stack, _Memory, trap).
 
 
-binary_op([B, A|Rest], [R|Rest], Op, continue) :-
-    eval_binop(Op, A, B, R), !.
 
-binary_op(Stack, Stack, _Op, trap). % als er al een trap gegenereerd werd => doe niets
-
-eval_binop(+, A, B, R) :- R is A + B.
-eval_binop(-, A, B, R) :- R is A - B.
-eval_binop(*, A, B, R) :- R is A * B.
-eval_binop(lt_s,  A, B, R) :- ( A  <  B -> R = 1 ; R = 0 ).
-eval_binop(le_s,  A, B, R) :- ( A  =< B -> R = 1 ; R = 0 ).
-eval_binop(gt_s,  A, B, R) :- ( A  >  B -> R = 1 ; R = 0 ).
-eval_binop(ge_s,  A, B, R) :- ( A  >= B -> R = 1 ; R = 0 ).
-eval_binop(eq,    A, B, R) :- ( A =:= B -> R = 1 ; R = 0 ).
-eval_binop(ne,    A, B, R) :- ( A =\= B -> R = 1 ; R = 0 ).
-eval_binop(i32_and, A, B, R) :- R is A /\ B.
-eval_binop(i32_or,  A, B, R) :- R is A \/ B.
-eval_binop(i32_xor, A, B, R) :- R is A xor B.
-
-handle_block_signal(continue, Locals, Stack, Locals, Stack, continue).
-handle_block_signal(returned, Locals, Stack, Locals, Stack, returned).
-handle_block_signal(trap, Locals, Stack, Locals, Stack, trap).
-handle_block_signal(break(0), Locals, Stack, Locals, Stack, continue).
-handle_block_signal(break(N), Locals, Stack, Locals, Stack, break(N1)) :-
-    N > 0,
-    N1 is N - 1.
-
-run_loop(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
-    exec_instructions(Instructions, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal),
-    handle_loop_signal(InnerSignal, Instructions, Module, Locals1, LocalsOut, Stack1, StackOut, Memory, Signal).
-
-handle_loop_signal(continue, _Instructions, _Module, Locals, Locals, Stack, Stack, _Memory, continue).
-handle_loop_signal(returned, _Instructions, _Module, Locals, Locals, Stack, Stack, _Memory, returned).
-handle_loop_signal(trap, _Instructions, _Module, Locals, Locals, Stack, Stack, _Memory, trap).
-handle_loop_signal(break(0), Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal) :-
-    run_loop(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal).
-handle_loop_signal(break(N), _Instructions, _Module, Locals, Locals, Stack, Stack, _Memory, break(N1)) :-
-    N > 0,
-    N1 is N - 1.
-
-call_internal(Index, Module, StackIn, StackOut, Memory, Signal) :-
-    Module = module(_Start, _Data, Funcs),
-    nth0(Index, Funcs, func(ArgCount, _Locals, _Results, _Instrs)),
-    pop_n(ArgCount, StackIn, RawArgs, StackRest),
-    reverse(RawArgs, Args),
-    execute_function(Index, Args, Module, Memory, Returns, Status),
-    ( Status = trap ->
-        Signal = trap,
-        StackOut = StackIn
-    ; append_rev(Returns, StackRest, StackOut),
-      Signal = continue
-    ), !.
-call_internal(_Index, _Module, Stack, Stack, _Memory, trap).
-
-set_nth0([_|T], 0, Value, [Value|T]) :- !.
-set_nth0([H|T], N, Value, [H|T1]) :-
-    N > 0,
-    N1 is N - 1,
-    set_nth0(T, N1, Value, T1).
-
-pop_n(0, Stack, [], Stack) :- !.
-pop_n(N, [H|T], [H|Rest], StackRest) :-
-    N > 0,
-    N1 is N - 1,
-    pop_n(N1, T, Rest, StackRest).
-
-append_rev([], Tail, Tail).
-append_rev([H|T], Tail, Out) :-
-    append_rev(T, Tail, Out1),
-    Out = [H|Out1].
-
-take_n(0, _Stack, []) :- !.
-take_n(N, [H|T], [H|Rest]) :-
-    N > 0,
-    N1 is N - 1,
-    take_n(N1, T, Rest).

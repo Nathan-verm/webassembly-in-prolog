@@ -3,6 +3,7 @@
 :- use_module(library(readutil)).
 :- use_module(library(random)).
 :- use_module(memory_initializer).
+:- use_module(utilities).
 
 
 
@@ -61,18 +62,6 @@ read_int_between(Min, Max, Value) :-
     N < Max,
     Value = N,
     !.
-
-pop_n(0, Stack, [], Stack) :- !.
-pop_n(N, [H|T], [H|Rest], StackRest) :-
-    N > 0,
-    N1 is N - 1,
-    pop_n(N1, T, Rest, StackRest).
-
-
-append_rev([], Tail, Tail).
-append_rev([H|T], Tail, Out) :-
-    append_rev(T, Tail, Out1),
-    Out = [H|Out1].
 
 
 memory_slice(_Memory, _Address, Length, []) :-
