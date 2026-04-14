@@ -9,9 +9,9 @@ dispatch([run, File|_]) :-
     !,
     run_dispatch(File).
 
-% dispatch([analyse, File, MaxInstructions|_]) :-
-%     !,
-%     analyse_dispatch(File, MaxInstructions).
+dispatch([analyse, File, MaxInstructions|_]) :-
+    !,
+    analyse_dispatch(File, MaxInstructions).
 
 dispatch([paths, _File|_]) :-
     !,
@@ -19,7 +19,10 @@ dispatch([paths, _File|_]) :-
     halt(1).
 
 dispatch(_) :-
-    writeln('Usage: swipl -q -s src/main.pl -- <run|analyse|paths> <file.pwat>'),
+    writeln('Usage:'),
+    writeln('  swipl -q -s src/main.pl -- run <file.pwat>'),
+    writeln('  swipl -q -s src/main.pl -- analyse <file.pwat> <max_instructions>'),
+    writeln('  swipl -q -s src/main.pl -- paths <file.pwat>'),
     halt(1).
 
 % succesgeval
@@ -34,8 +37,26 @@ run_dispatch(File) :-
     format(user_error, 'ERROR: uitvoering van ~w mislukt~n', [File]),
     halt(1).
 
-% analyse_dispatch(File, MaxInstructions) :- 
-%     run_file(File, result(Status, Returns))
+
+analyse_dispatch(File, MaxInstructionsRaw) :-
+    parse_max_instructions(MaxInstructionsRaw, MaxInstructions),
+    findall(Inputs,
+        (
+            ContextIn = analyse(MaxInstructions, 0, [], []),
+            analyse_file(File, ContextIn, analyse(_, _, Inputs, _), result(_Status, _Returns))
+        ),
+        AllInputs),
+    format('All inputs: ~w~n', [AllInputs]),
+    !.
+
+analyse_dispatch(_File, MaxInstructionsRaw) :-
+    format(user_error, 'ERROR: max_instructions moet een positief geheel getal zijn, kreeg: ~w~n', [MaxInstructionsRaw]),
+    halt(1).
+
+parse_max_instructions(MaxInstructionsRaw, MaxInstructions) :-
+    catch(atom_number(MaxInstructionsRaw, MaxInstructions), _, fail),
+    integer(MaxInstructions),
+    MaxInstructions > 0.
 
 
 :- initialization(main, main).

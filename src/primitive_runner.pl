@@ -1,4 +1,4 @@
-:- module(primitive_runner, [call_primitive/5]).
+:- module(primitive_runner, [call_primitive/7]).
 
 :- use_module(library(readutil)).
 :- use_module(library(random)).
@@ -7,11 +7,11 @@
 
 
 
-call_primitive(Name, StackIn, Memory, StackOut, Signal) :-
+call_primitive(Name, StackIn, Memory, StackOut, Signal, ContextIn, ContextOut) :-
     primitive_arity(Name, Arity),
     pop_n(Arity, StackIn, RawArgs, StackRest),
     reverse(RawArgs, Args),
-    run_primitive(Name, Args, Memory, PrimitiveReturns, PrimitiveStatus),
+    run_primitive(Name, Args, Memory, PrimitiveReturns, PrimitiveStatus, ContextIn, ContextOut),
     handle_primitive_result(PrimitiveStatus, PrimitiveReturns, StackIn, StackRest, StackOut, Signal),
     !.
 
@@ -32,26 +32,48 @@ primitive_arity(println, 2).
 
 % run_primitive(InstructionName, ArgsList, Memory, ReturnList, Status) status => finished, continue, trap
 
-run_primitive(print, [Address, Length], Memory, [], continue) :-
+% if context is run => gewoon printen
+run_primitive(print, [Address, Length], Memory, [], continue, run, run) :-
     memory_slice(Memory, Address, Length, Codes),
     format('~s', [Codes]), !.
 
-run_primitive(println, Args, Memory, [], continue) :-
-    run_primitive(print, Args, Memory, [], continue),
+% als context analyse is => niet printen
+run_primitive(print, [_Address, _Length], _Memory, [], continue, analyse(_, _, _, _), _).
+
+
+run_primitive(println, Args, Memory, [], continue, run, run) :-
+    run_primitive(print, Args, Memory, [], continue, run, run),
     writeln(""), !.
 
-run_primitive(print_int, [Value], _Memory, [], continue) :-
+run_primitive(println, [_Address, _Length], _Memory, [], continue, analyse(_, _, _, _), _).
+
+
+run_primitive(print_int, [Value], _Memory, [], continue, run, run) :-
     writeln(Value), !.
 
-run_primitive(read_int, [Min, Max], _Memory, [Value], continue) :-
+
+run_primitive(print_int, _, _Memory, [], continue, analyse(_, _, _, _), analyse(_, _, _, _)).
+
+
+
+run_primitive(read_int, [Min, Max], _Memory, [Value], continue, run, run) :-
     read_int_between(Min, Max, Value), !.
 
-run_primitive(rand_int, [Min, Max], _Memory, [Value], continue) :-
+% hier is de clue van analyse functie
+run_primitive(read_int, [Min, Max], _Memory, [Value], continue, analyse(MaxInstructionsIn, CounterIn, InputsIn, BadInputsIn), analyse(MaxInstructionsIn, CounterIn, InputsOut, BadInputsIn)) :-
+    Lower is Min + 1,
+    Upper is Max - 1,
+    Lower =< Upper,
+    between(Lower, Upper, Value),
+    InputsOut = [Value|InputsIn].
+
+run_primitive(rand_int, [Min, Max], _Memory, [Value], continue, Context, Context) :-
     MaxMinOne is Max - 1,
-    random_between(Min, MaxMinOne, Value), !.
+    random_between(Min, MaxMinOne, Value), 
+    !.
 
 % should not be possible because parser should already fail but just in case
-run_primitive(_Name, _Args, _Memory, [], trap). 
+run_primitive(_Name, _Args, _Memory, [], trap, _ContextIn, _ContextOut). 
 
 
 read_int_between(Min, Max, Value) :-

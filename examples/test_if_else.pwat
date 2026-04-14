@@ -1,18 +1,23 @@
 (module
-  (start 0)
-
-  (data 0 "\97")
-  (data 1 "\97\98")
+    (start 0)
 
 
-  (func (args 0) (locals 0) (results 1)
-    i32.const 1
-    if
+    ;; Main function
+    (func (args 0) (locals 1) (results 0)
+
+        i32.const 0
         i32.const 10
-        br 0
-        i32.const 30
-    else
-        i32.const 20
-    end
-  )
+        call read_int
+        local.set 0
+
+        local.get 0
+        i32.const 5
+        i32.gt_s
+
+        if
+
+        else
+            unreachable
+        end
+    )
 )
