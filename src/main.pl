@@ -40,13 +40,26 @@ run_dispatch(File) :-
 
 analyse_dispatch(File, MaxInstructionsRaw) :-
     parse_max_instructions(MaxInstructionsRaw, MaxInstructions),
-    findall(Inputs,
+    findall(Status-Inputs-BadInputs,
         (
             ContextIn = analyse(MaxInstructions, 0, [], []),
-            analyse_file(File, ContextIn, analyse(_, _, Inputs, _), result(_Status, _Returns))
+            analyse_file(File, ContextIn, analyse(_, _, Inputs, BadInputs), result(Status, _Returns))
         ),
-        AllInputs),
-    format('All inputs: ~w~n', [AllInputs]),
+        AllResults),
+    findall(Input,
+        (
+            member(finished-[Input|_]-_, AllResults)
+        ),
+        GoodRaw),
+    findall(Input,
+        (
+            member(trap-[Input|_]-_, AllResults)
+        ),
+        BadRaw),
+    sort(GoodRaw, GoodInputs),
+    sort(BadRaw, BadInputs),
+    format('Good inputs: ~w~n', [GoodInputs]),
+    format('Bad inputs: ~w~n', [BadInputs]),
     !.
 
 analyse_dispatch(_File, MaxInstructionsRaw) :-

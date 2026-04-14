@@ -12,8 +12,7 @@ call_primitive(Name, StackIn, Memory, StackOut, Signal, ContextIn, ContextOut) :
     pop_n(Arity, StackIn, RawArgs, StackRest),
     reverse(RawArgs, Args),
     run_primitive(Name, Args, Memory, PrimitiveReturns, PrimitiveStatus, ContextIn, ContextOut),
-    handle_primitive_result(PrimitiveStatus, PrimitiveReturns, StackIn, StackRest, StackOut, Signal),
-    !.
+    handle_primitive_result(PrimitiveStatus, PrimitiveReturns, StackIn, StackRest, StackOut, Signal).
 
 call_primitive(_Name, Stack, _Memory, Stack, trap).
 

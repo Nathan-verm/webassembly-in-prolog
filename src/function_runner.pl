@@ -39,14 +39,17 @@ exec_instructions([], _Module, Locals, Locals, Stack, Stack, _Memory, continue, 
 exec_instructions([Instr|Rest], Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal, ContextIn, ContextOut) :-
     exec_instruction(Instr, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, StepSignal, ContextIn, ContextOutExecute),
     increment_instruction_counter(ContextOutExecute, IncrementedContext),
-    continue_or_stop(StepSignal, Rest, Module, Locals1, LocalsOut, Stack1, StackOut, Memory, Signal, IncrementedContext, ContextOut),
-    !.
+    continue_or_stop(StepSignal, Rest, Module, Locals1, LocalsOut, Stack1, StackOut, Memory, Signal, IncrementedContext, ContextOut).
 
 increment_instruction_counter(analyse(MaxInstructions, CurrentCounter, Inputs, BadInputs), analyse(MaxInstructions, IncCurrentCounter, Inputs, BadInputs)) :-
+    integer(CurrentCounter),
     IncCurrentCounter is CurrentCounter + 1.
 
 % niets te incrementen in geval van run context
 increment_instruction_counter(run, run).
+
+% defensieve fallback: laat context ongewijzigd als tellercontext niet volledig geïnstantieerd is
+increment_instruction_counter(Context, Context).
 
 
 
@@ -93,8 +96,7 @@ call_internal(Index, Module, StackIn, StackOut, Memory, Signal, ContextIn, Conte
     pop_n(ArgCount, StackIn, RawArgs, StackRest),
     reverse(RawArgs, Args),
     execute_function(Index, Args, Module, Memory, Returns, Status, ContextIn, ContextOut),
-    prepare_to_return(Status, Returns, StackIn, StackRest, StackOut, Signal),
-    !.
+    prepare_to_return(Status, Returns, StackIn, StackRest, StackOut, Signal).
 
 call_internal(_Index, _Module, Stack, Stack, _Memory, trap, _, _).
 
@@ -167,6 +169,7 @@ exec_instruction(drop, _Module, Locals, Locals, Stack, Stack, _Memory, trap, Con
 
 exec_instruction(nop, _Module, Locals, Locals, Stack, Stack, _Memory, continue, Context, Context).
 
+exec_instruction(unreachable, _Module, Locals, Locals, Stack, Stack, _Memory, trap, analyse(_, _, [Input|Rest], BadInputs), analyse(_, _, [Input|Rest], [Input|BadInputs])).
 exec_instruction(unreachable, _Module, Locals, Locals, Stack, Stack, _Memory, trap, Context, Context).
 
 
