@@ -48,9 +48,6 @@ increment_instruction_counter(analyse(MaxInstructions, CurrentCounter, Inputs, B
 % niets te incrementen in geval van run context
 increment_instruction_counter(run, run).
 
-% defensieve fallback: laat context ongewijzigd als tellercontext niet volledig geïnstantieerd is
-increment_instruction_counter(Context, Context).
-
 
 
 % als continue -> voer volgende instructie uit.
@@ -169,7 +166,8 @@ exec_instruction(drop, _Module, Locals, Locals, Stack, Stack, _Memory, trap, Con
 
 exec_instruction(nop, _Module, Locals, Locals, Stack, Stack, _Memory, continue, Context, Context).
 
-exec_instruction(unreachable, _Module, Locals, Locals, Stack, Stack, _Memory, trap, analyse(_, _, [Input|Rest], BadInputs), analyse(_, _, [Input|Rest], [Input|BadInputs])).
+exec_instruction(unreachable, _Module, Locals, Locals, Stack, Stack, _Memory, trap, analyse(MaxInstructions, Counter, Inputs, BadInputsIn), analyse(MaxInstructions, Counter, Inputs, [BadPath|BadInputsIn])) :-
+    reverse(Inputs, BadPath).
 exec_instruction(unreachable, _Module, Locals, Locals, Stack, Stack, _Memory, trap, Context, Context).
 
 
@@ -223,16 +221,14 @@ exec_instruction(br(_Value), _Module, Locals, Locals, Stack, Stack, _Memory, tra
 % Conditie is onwaar (0) => voer FalseBlock uit
 exec_instruction(if(_TrueBlock, FalseBlock), Module, LocalsIn, LocalsOut, [0|StackIn], StackOut, Memory, Signal, ContextIn, ContextOut) :-
     exec_instructions(FalseBlock, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal, ContextIn, ContextOut),
-    handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal),
-    !.
+    handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal).
 
 % Conditie is waar (niet 0) => voer TrueBlock uit
 exec_instruction(if(TrueBlock, _FalseBlock), Module, LocalsIn, LocalsOut, [Cond|StackIn], StackOut, Memory, Signal, ContextIn, ContextOut) :-
     number(Cond),
     Cond =\= 0,
     exec_instructions(TrueBlock, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal, ContextIn, ContextOut),
-    handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal),
-    !.
+    handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal).
 
 
 % Lege stack => trap

@@ -46,18 +46,21 @@ analyse_dispatch(File, MaxInstructionsRaw) :-
             analyse_file(File, ContextIn, analyse(_, _, Inputs, BadInputs), result(Status, _Returns))
         ),
         AllResults),
-    findall(Input,
+    findall(Path,
         (
-            member(finished-[Input|_]-_, AllResults)
+            member(finished-Inputs-_, AllResults),
+            reverse(Inputs, Path)
         ),
-        GoodRaw),
-    findall(Input,
+        GoodPathsRaw),
+    findall(BadPath,
         (
-            member(trap-[Input|_]-_, AllResults)
+            member(trap-_-BadList, AllResults),
+            member(BadPath, BadList),
+            is_list(BadPath)
         ),
-        BadRaw),
-    sort(GoodRaw, GoodInputs),
-    sort(BadRaw, BadInputs),
+        BadPathsRaw),
+    sort(GoodPathsRaw, GoodInputs),
+    sort(BadPathsRaw, BadInputs),
     format('Good inputs: ~w~n', [GoodInputs]),
     format('Bad inputs: ~w~n', [BadInputs]),
     !.

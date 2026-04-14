@@ -14,7 +14,8 @@ call_primitive(Name, StackIn, Memory, StackOut, Signal, ContextIn, ContextOut) :
     run_primitive(Name, Args, Memory, PrimitiveReturns, PrimitiveStatus, ContextIn, ContextOut),
     handle_primitive_result(PrimitiveStatus, PrimitiveReturns, StackIn, StackRest, StackOut, Signal).
 
-call_primitive(_Name, Stack, _Memory, Stack, trap).
+call_primitive(Name, Stack, _Memory, Stack, trap, Context, Context) :-
+    \+ primitive_arity(Name, _).
 
 % if trap has been made
 handle_primitive_result(trap, _Returns, StackIn, _StackRest, StackIn, trap).
@@ -72,7 +73,8 @@ run_primitive(rand_int, [Min, Max], _Memory, [Value], continue, Context, Context
     !.
 
 % should not be possible because parser should already fail but just in case
-run_primitive(_Name, _Args, _Memory, [], trap, _ContextIn, _ContextOut). 
+run_primitive(Name, _Args, _Memory, [], trap, Context, Context) :-
+    \+ primitive_arity(Name, _).
 
 
 read_int_between(Min, Max, Value) :-

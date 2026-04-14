@@ -1,21 +1,35 @@
 (module
     (start 0)
 
-
     ;; Main function
-    (func (args 0) (locals 1) (results 0)
+    (func (args 0) (locals 2) (results 0)
 
+        ;; ===== Eerste input =====
         i32.const 0
         i32.const 10
         call read_int
         local.set 0
 
+        ;; Check: input < 5 ?
         local.get 0
         i32.const 5
-        i32.gt_s
-
+        i32.lt_s
         if
+            ;; ===== Tweede input =====
+            i32.const 0
+            i32.const 10
+            call read_int
+            local.set 1
 
+            ;; Check: input > 5 ?
+            local.get 1
+            i32.const 5
+            i32.gt_s
+            if
+                ;; Beide voorwaarden geslaagd
+            else
+                unreachable
+            end
         else
             unreachable
         end
