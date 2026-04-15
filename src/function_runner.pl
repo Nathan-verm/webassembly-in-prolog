@@ -232,8 +232,7 @@ exec_instruction(br(_Value), _Module, Locals, Locals, Stack, Stack, _Memory, tra
 exec_instruction(if(_TrueBlock, FalseBlock), Module, LocalsIn, LocalsOut, [0|StackIn], StackOut, Memory, Signal, ContextIn, ContextOut) :-
     record_branch_decision(ContextIn, if_false, ContextWithDecision),
     exec_instructions(FalseBlock, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal, ContextWithDecision, ContextOut),
-    handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal),
-    !.
+    handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal).
 
 % Conditie is waar (niet 0) => voer TrueBlock uit
 exec_instruction(if(TrueBlock, _FalseBlock), Module, LocalsIn, LocalsOut, [Cond|StackIn], StackOut, Memory, Signal, ContextIn, ContextOut) :-
@@ -241,31 +240,34 @@ exec_instruction(if(TrueBlock, _FalseBlock), Module, LocalsIn, LocalsOut, [Cond|
     Cond =\= 0,
     record_branch_decision(ContextIn, if_true, ContextWithDecision),
     exec_instructions(TrueBlock, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal, ContextWithDecision, ContextOut),
-    handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal),
-    !.
+    handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal).
 
 
 % Lege stack => trap
 exec_instruction(if(_TrueBlock, _FalseBlock), _Module, Locals, Locals, [], [], _Memory, trap, Context, Context).
-exec_instruction(if(_TrueBlock, _FalseBlock), _Module, Locals, Locals, [_|Stack], [_|Stack], _Memory, trap, Context, Context).
+exec_instruction(if(_TrueBlock, _FalseBlock), _Module, Locals, Locals, [Cond|Stack], [Cond|Stack], _Memory, trap, Context, Context) :-
+    \+ number(Cond).
 
 
 exec_instruction(br_if(Value), _Module, Locals, Locals, [Cond|Stack], Stack, _Memory, break(Value), ContextIn, ContextOut) :-
     integer(Value),
     Value >= 0,
     Cond =\= 0,
-    record_branch_decision(ContextIn, br_if_true(Value), ContextOut),
-    !.
+    record_branch_decision(ContextIn, br_if_true(Value), ContextOut).
 
 % conditie is onwaar (0) => continue
 exec_instruction(br_if(Value), _Module, Locals, Locals, [0|Stack], Stack, _Memory, continue, ContextIn, ContextOut) :-
     integer(Value),
     Value >= 0,
-    record_branch_decision(ContextIn, br_if_false(Value), ContextOut),
-    !.
+    record_branch_decision(ContextIn, br_if_false(Value), ContextOut).
 
 % ongeldige waarde => trap
-exec_instruction(br_if(_Value), _Module, Locals, Locals, Stack, Stack, _Memory, trap, Context, Context).
+exec_instruction(br_if(Value), _Module, Locals, Locals, [Cond|Stack], [Cond|Stack], _Memory, trap, Context, Context) :-
+    ( \+ integer(Value)
+    ; Value < 0
+    ; \+ number(Cond)
+    ).
+exec_instruction(br_if(_Value), _Module, Locals, Locals, [], [], _Memory, trap, Context, Context).
 
 
 exec_instruction(loop(Instructions), Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal, ContextIn, ContextOut) :-
