@@ -38,21 +38,21 @@ run_primitive(print, [Address, Length], Memory, [], continue, run, run) :-
     format('~s', [Codes]), !.
 
 % als context analyse is => niet printen
-run_primitive(print, [_Address, _Length], _Memory, [], continue, analyse(_, _, _, _), _).
+run_primitive(print, [_Address, _Length], _Memory, [], continue, analyse(_, _, _, _, _), _).
 
 
 run_primitive(println, Args, Memory, [], continue, run, run) :-
     run_primitive(print, Args, Memory, [], continue, run, run),
     writeln(""), !.
 
-run_primitive(println, [_Address, _Length], _Memory, [], continue, analyse(_, _, _, _), _).
+run_primitive(println, [_Address, _Length], _Memory, [], continue, analyse(_, _, _, _, _), _).
 
 
 run_primitive(print_int, [Value], _Memory, [], continue, run, run) :-
     writeln(Value), !.
 
 
-run_primitive(print_int, _, _Memory, [], continue, analyse(_, _, _, _), analyse(_, _, _, _)).
+run_primitive(print_int, _, _Memory, [], continue, analyse(_, _, _, _, _), analyse(_, _, _, _, _)).
 
 
 
@@ -60,7 +60,7 @@ run_primitive(read_int, [Min, Max], _Memory, [Value], continue, run, run) :-
     read_int_between(Min, Max, Value), !.
 
 % hier is de clue van analyse functie
-run_primitive(read_int, [Min, Max], _Memory, [Value], continue, analyse(MaxInstructionsIn, CounterIn, InputsIn, BadInputsIn), analyse(MaxInstructionsIn, CounterIn, InputsOut, BadInputsIn)) :-
+run_primitive(read_int, [Min, Max], _Memory, [Value], continue, analyse(MaxInstructionsIn, CounterIn, InputsIn, BadInputsIn, PathTrace), analyse(MaxInstructionsIn, CounterIn, InputsOut, BadInputsIn, PathTrace)) :-
     Lower is Min + 1,
     Upper is Max - 1,
     Lower =< Upper,

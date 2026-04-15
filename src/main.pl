@@ -40,29 +40,23 @@ run_dispatch(File) :-
 
 analyse_dispatch(File, MaxInstructionsRaw) :-
     parse_max_instructions(MaxInstructionsRaw, MaxInstructions),
-    findall(Status-Inputs-BadInputs,
+    findall(Status-Inputs-PathTrace,
         (
-            ContextIn = analyse(MaxInstructions, 0, [], []),
-            analyse_file(File, ContextIn, analyse(_, _, Inputs, BadInputs), result(Status, _Returns))
+            ContextIn = analyse(MaxInstructions, 0, [], [], []),
+            analyse_file(File, ContextIn, analyse(_, _, Inputs, _, PathTrace), result(Status, _Returns))
         ),
         AllResults),
-    findall(Path,
+    findall(PathTrace-Path,
         (
-            member(finished-Inputs-_, AllResults),
+            member(trap-Inputs-PathTraceRev, AllResults),
+            reverse(PathTraceRev, PathTrace),
             reverse(Inputs, Path)
         ),
-        GoodPathsRaw),
-    findall(BadPath,
-        (
-            member(trap-_-BadList, AllResults),
-            member(BadPath, BadList),
-            is_list(BadPath)
-        ),
-        BadPathsRaw),
-    sort(GoodPathsRaw, GoodInputs),
-    sort(BadPathsRaw, BadInputs),
-    format('Good inputs: ~w~n', [GoodInputs]),
-    format('Bad inputs: ~w~n', [BadInputs]),
+        TrapCandidates),
+    prefer_decision_paths(TrapCandidates, FilteredTrapCandidates),
+    keysort(FilteredTrapCandidates, SortedTrapCandidates),
+    keep_first_input_per_path(SortedTrapCandidates, UniqueTrapInputs),
+    print_trap_paths(UniqueTrapInputs),
     !.
 
 analyse_dispatch(_File, MaxInstructionsRaw) :-
@@ -73,6 +67,37 @@ parse_max_instructions(MaxInstructionsRaw, MaxInstructions) :-
     catch(atom_number(MaxInstructionsRaw, MaxInstructions), _, fail),
     integer(MaxInstructions),
     MaxInstructions > 0.
+
+keep_first_input_per_path([], []).
+keep_first_input_per_path([Path-Inputs|Rest], [Inputs|Out]) :-
+    skip_same_path(Path, Rest, Remaining),
+    keep_first_input_per_path(Remaining, Out).
+
+skip_same_path(_Path, [], []).
+skip_same_path(Path, [Path-_|Rest], Remaining) :-
+    !,
+    skip_same_path(Path, Rest, Remaining).
+skip_same_path(_Path, Rest, Rest).
+
+print_trap_paths([]).
+print_trap_paths([Inputs|Rest]) :-
+    format('Inputs: ~w, State: trap~n', [Inputs]),
+    print_trap_paths(Rest).
+
+prefer_decision_paths(TrapCandidates, FilteredTrapCandidates) :-
+    ( has_non_empty_path(TrapCandidates) ->
+        exclude(is_empty_path_candidate, TrapCandidates, FilteredTrapCandidates)
+    ;
+        FilteredTrapCandidates = TrapCandidates
+    ).
+
+has_non_empty_path([Path-_|_]) :-
+    Path \= [],
+    !.
+has_non_empty_path([_|Rest]) :-
+    has_non_empty_path(Rest).
+
+is_empty_path_candidate([]-_).
 
 
 :- initialization(main, main).
