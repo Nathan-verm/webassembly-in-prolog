@@ -62,12 +62,34 @@ record_branch_decision(Context, _Decision, Context).
 % als continue -> voer volgende instructie uit.
 % TODO stop als we meer instructies hebben dan MaxInstructions.
 continue_or_stop(continue, Rest, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal, ContextIn, ContextOut) :-
-    exec_instructions(Rest, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal, ContextIn, ContextOut).
+    ( instruction_limit_reached(ContextIn) ->
+        LocalsOut = LocalsIn,
+        StackOut = StackIn,
+        Signal = continue,
+        ContextOut = ContextIn
+    ;
+        exec_instructions(Rest, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal, ContextIn, ContextOut)
+    ).
 
 % stop als een instructie een instructie een step, return of branch ziet staan. Dan stoppen we hier de uitvoering en geven we deze signal door naar boven.
 continue_or_stop(NotContinue, _Rest, _Module, Locals, Locals, Stack, Stack, _Memory, NotContinue, ContextIn, ContextOut) :-
     NotContinue \= continue,
     ContextOut = ContextIn.
+
+instruction_limit_reached(analyse(MaxInstructions, CurrentCounter, _Inputs, _BadInputs)) :-
+    integer(MaxInstructions),
+    integer(CurrentCounter),
+    CurrentCounter >= MaxInstructions,
+    !.
+
+instruction_limit_reached(analyse(MaxInstructions, CurrentCounter, _Inputs, _BadInputs, _PathTrace)) :-
+    integer(MaxInstructions),
+    integer(CurrentCounter),
+    CurrentCounter >= MaxInstructions,
+    !.
+
+instruction_limit_reached(_Context) :-
+    fail.
 
 
 handle_block_signal(continue, Locals, Stack, Locals, Stack, continue).

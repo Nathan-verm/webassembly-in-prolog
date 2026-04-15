@@ -55,7 +55,14 @@ analyse_dispatch(File, MaxInstructionsRaw) :-
             reverse(PathTraceRev, PathTrace),
             reverse(Inputs, Path)
         ),
-        TrapCandidates),
+        RawTrapCandidates),
+    findall(FinishedPathTrace,
+        (
+            member(finished-_-FinishedPathTraceRev, AllResults),
+            reverse(FinishedPathTraceRev, FinishedPathTrace)
+        ),
+        FinishedPathTraces),
+    exclude(trap_shadowed_by_finished(FinishedPathTraces), RawTrapCandidates, TrapCandidates),
     prefer_complete_trap_paths(TrapCandidates, CompleteTrapCandidates),
     prefer_decision_paths(CompleteTrapCandidates, FilteredTrapCandidates),
     keysort(FilteredTrapCandidates, SortedTrapCandidates),
@@ -83,7 +90,8 @@ paths_dispatch(File, MaxInstructionsRaw) :-
             reverse(Inputs, Path),
             Key = key(PathTrace, Status)
         ),
-        PathCandidates),
+        RawPathCandidates),
+    suppress_shadowed_traps(RawPathCandidates, PathCandidates),
     prefer_complete_paths_with_state(PathCandidates, CompletePathCandidates),
     prefer_decision_paths_with_state(CompletePathCandidates, FilteredPathCandidates),
     keysort(FilteredPathCandidates, SortedPathCandidates),
@@ -131,6 +139,9 @@ has_non_empty_path([_|Rest]) :-
 
 is_empty_path_candidate([]-_).
 
+trap_shadowed_by_finished(FinishedPathTraces, PathTrace-_) :-
+    member(PathTrace, FinishedPathTraces).
+
 prefer_complete_trap_paths(TrapCandidates, CompleteTrapCandidates) :-
     exclude(has_longer_trap_extension(TrapCandidates), TrapCandidates, CompleteTrapCandidates).
 
@@ -173,6 +184,15 @@ has_non_empty_path_key([_|Rest]) :-
     has_non_empty_path_key(Rest).
 
 is_empty_path_key_candidate(key([], _)-_-_).
+
+suppress_shadowed_traps(RawPathCandidates, FilteredPathCandidates) :-
+    findall(PathTrace,
+        member(key(PathTrace, finished)-_-_, RawPathCandidates),
+        FinishedPathTraces),
+    exclude(is_shadowed_trap_candidate(FinishedPathTraces), RawPathCandidates, FilteredPathCandidates).
+
+is_shadowed_trap_candidate(FinishedPathTraces, key(PathTrace, trap)-_-_) :-
+    member(PathTrace, FinishedPathTraces).
 
 prefer_complete_paths_with_state(PathCandidates, CompletePathCandidates) :-
     exclude(has_longer_path_extension(PathCandidates), PathCandidates, CompletePathCandidates).

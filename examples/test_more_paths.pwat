@@ -1,0 +1,66 @@
+(module
+    (start 0)
+
+    ;; Main function with 5 complete execution paths:
+    ;; 3 trap paths and 2 finished paths.
+    (func (args 0) (locals 3) (results 0)
+
+        ;; a in (0, 10)
+        i32.const 0
+        i32.const 10
+        call read_int
+        local.set 0
+
+        ;; if a < 4
+        local.get 0
+        i32.const 4
+        i32.lt_s
+        if
+            ;; b in (0, 10)
+            i32.const 0
+            i32.const 10
+            call read_int
+            local.set 1
+
+            ;; if b > 6
+            local.get 1
+            i32.const 6
+            i32.gt_s
+            if
+                ;; c in (0, 6)
+                i32.const 0
+                i32.const 6
+                call read_int
+                local.set 2
+
+                ;; if c == 3 then trap else finished
+                local.get 2
+                i32.const 3
+                i32.eq
+                if
+                    unreachable
+                else
+                    nop
+                end
+            else
+                unreachable
+            end
+        else
+            ;; b in (0, 10)
+            i32.const 0
+            i32.const 10
+            call read_int
+            local.set 1
+
+            ;; if b < 3 then finished else trap
+            local.get 1
+            i32.const 3
+            i32.lt_s
+            if
+                nop
+            else
+                unreachable
+            end
+        end
+    )
+)
