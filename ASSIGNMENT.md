@@ -24,7 +24,7 @@ De eerste modus van het programma is de gewone `run` modus. Deze zal het program
 ```
 ./plwasm run <filename>
 ```
-Om het programma te starten zal de interpreter de start functie oproepen die aangegeven wordt in het bestand, het programma start met een lege stapel. Je mag er van uit gaan dat de start functie geen argument heeft.
+Om het programma te starten zal de interpreter de start functie oproepen die aangegeven wordt in het bestand, het programma start met een lege stapel. Je mag er van uit gaan dat de start functie geen argument heeft. Bij een incorrect programma mag je interpreter stoppen en een foutmelding geven. Bij een trap moet je interpreter "TRAP!" printen.
 
 ### Programma analyse
 Naast het uitvoeren moet je project ook programma's kunnen analyseren om inputs te vinden die het programma doen crashen. Het doel is dus om alle mogelijke inputs af te gaan en een oplijsting terug te geven van welke inputs in een fout resulteren. Bijkomend willen we ook dat er per uitvoeringspad maar één set inputs wordt afgedrukt.
@@ -103,7 +103,7 @@ Inputs: [13], State: finished
 Hier zal de `4` er dus voor zorgen dat het pad `read_int(0, 30) < 10` uitgevoerd wordt terwijl de `13` het pad `read_int(0, 30) >= 10` zal uitvoeren.
 
 ## Instructies
-We hebben ervoor gekozen een subset van WebAssembly te ondersteunen waarbij alleen maar met signed 32 bit integers gewerkt kan worden. Hieronder geven we een oplijsting van welke instructies je project moet kunnen gebruiken. Instructies nemen elementen van de stapel, doen een bepaalde operatie en plaatsen dan mogelijks terug elementen op de stapel. In het geval dat een instructie een element van de stapel wil nemen en dit element niet bestaat dan moet je interpreter stoppen. Dit zijn namelijk ongeldige WebAssembly programma's die niet door de [validatie](https://webassembly.github.io/spec/core/valid/index.html) stap zouden geraken.
+We hebben ervoor gekozen een subset van WebAssembly te ondersteunen waarbij alleen maar met signed 32 bit integers gewerkt kan worden. Hieronder geven we een oplijsting van welke instructies je project moet kunnen gebruiken. Instructies nemen elementen van de stapel, doen een bepaalde operatie en plaatsen dan mogelijks terug elementen op de stapel. In het geval dat een instructie een element van de stapel wil nemen en dit element niet bestaat dan moet je interpreter stoppen. Dit zijn namelijk ongeldige WebAssembly programma's die niet door de [validatie](https://webassembly.github.io/spec/core/valid/index.html) stap zouden geraken. Als je interpreter stopt door een probleem moet de exit code niet 0 zijn.
 
 ### Numerieke instructies
 - `i32.const X` Plaats een constante `X` op de stapel.
