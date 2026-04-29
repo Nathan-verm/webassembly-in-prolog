@@ -122,9 +122,13 @@ instruction(nop) --> "nop", ws.
 instruction(unreachable) --> "unreachable", ws.
 
 
-% Integers
+% Integers (including negative numbers)
 
-integer(N) --> digits(Ds), { number_codes(N, Ds) }.
+integer(N) --> optional_sign(Sign), digits(Ds), { append(Sign, Ds, AllCodes), number_codes(N, AllCodes) }.
+
+optional_sign([45]) --> [45], !.  % 45 is ASCII voor '-'
+optional_sign([]) --> [].
+
 digits([D|T]) --> [D], { char_type(D,digit) }, digits_rest(T).
 digits_rest([D|T]) --> [D], { char_type(D,digit) }, digits_rest(T).
 digits_rest([]) --> [].
