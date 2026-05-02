@@ -6,30 +6,24 @@
 :- use_module('../src/function_runner').
 :- use_module(library(plunit)).
 
-% Helper predicate: Write test file
 write_test_file(File, Content) :-
     open(File, write, Stream),
     write(Stream, Content),
     close(Stream).
 
-% Helper predicate: Run a test file without debug output
 test_run_silent(File, result(Status, Returns)) :-
     parse(File, Module), !,
     Module = module(Start, DataSegments, _Funcs),
     build_memory(DataSegments, Memory),
     execute_function(Start, [], Module, Memory, Returns, Status, run, run), !.
 
-% =============================================================================
-% TEST 1: Block and block break (br) - breaks before i32.add
-% =============================================================================
+% Blokken en branch
 test(primitive_add) :-
     test_run_silent('../examples/test_block.pwat', result(Status, Returns)),
     assertion(Status == finished),
     assertion(Returns == [10]).  % breaks before 20 and add operations
 
-% =============================================================================
-% TEST 2: Primitieve instructies - Subtraction (i32.sub)
-% =============================================================================
+% Aftrekken
 test(primitive_subtract) :-
     TempFile = '/tmp/test_sub.pwat',
     write_test_file(TempFile, 
@@ -45,9 +39,7 @@ test(primitive_subtract) :-
     assertion(Status == finished),
     assertion(Returns == [12]).  % 20 - 8 = 12
 
-% =============================================================================
-% TEST 3: Primitieve instructies - Multiplication (i32.mul)
-% =============================================================================
+% Vermenigvuldigen
 test(primitive_multiply) :-
     TempFile = '/tmp/test_mul.pwat',
     write_test_file(TempFile,
@@ -63,9 +55,8 @@ test(primitive_multiply) :-
     assertion(Status == finished),
     assertion(Returns == [42]).  % 6 * 7 = 42
 
-% =============================================================================
-% TEST 4: Primitieve instructies - Division (i32.div_s)
-% =============================================================================
+
+% Delen
 test(primitive_divide) :-
     TempFile = '/tmp/test_div.pwat',
     write_test_file(TempFile,
@@ -81,9 +72,8 @@ test(primitive_divide) :-
     assertion(Status == finished),
     assertion(Returns == [6]).  % 30 / 5 = 6
 
-% =============================================================================
-% TEST 5: Local variables - local.set en local.get
-% =============================================================================
+
+% Lokale variabelen
 test(local_variables) :-
     TempFile = '/tmp/test_locals.pwat',
     write_test_file(TempFile,
@@ -107,17 +97,15 @@ test(local_variables) :-
     assertion(Status == finished),
     assertion(Returns == [25, 15]).  % Stack is LIFO: last pushed first
 
-% =============================================================================
-% TEST 6: Loops - Basic loop with br_if
-% =============================================================================
+
+% Basis lus
 test(loop_basic) :-
     test_run_silent('../examples/test_loop.pwat', result(Status, Returns)),
     assertion(Status == finished),
     assertion(Returns == [100]).  % Should loop until local becomes 100
 
-% =============================================================================
-% TEST 7: Loops - Counter loop (count from 0 to 5)
-% =============================================================================
+
+% Teller in lus
 test(loop_counter) :-
     TempFile = '/tmp/test_loop_counter.pwat',
     write_test_file(TempFile,
@@ -150,9 +138,8 @@ test(loop_counter) :-
     assertion(Status == finished),
     assertion(Returns == [5]).
 
-% =============================================================================
-% TEST 8: Conditionals - if statement (true condition)
-% =============================================================================
+
+% If waar
 test(conditional_if_true) :-
     TempFile = '/tmp/test_if_true.pwat',
     write_test_file(TempFile,
@@ -172,9 +159,8 @@ test(conditional_if_true) :-
     assertion(Status == finished),
     assertion(Returns == [100]).
 
-% =============================================================================
-% TEST 9: Conditionals - if/else statement (true condition)
-% =============================================================================
+
+% If/else waar
 test(conditional_if_else_true) :-
     TempFile = '/tmp/test_if_else_var.pwat',
     write_test_file(TempFile,
@@ -196,9 +182,8 @@ test(conditional_if_else_true) :-
     assertion(Status == finished),
     assertion(Returns == [200]).
 
-% =============================================================================
-% TEST 10: Conditionals - if/else statement (false condition)
-% =============================================================================
+
+% If/else onwaar
 test(conditional_if_else_false) :-
     TempFile = '/tmp/test_if_else_false.pwat',
     write_test_file(TempFile,
@@ -220,17 +205,15 @@ test(conditional_if_else_false) :-
     assertion(Status == finished),
     assertion(Returns == [600]).
 
-% =============================================================================
-% TEST 11: Return statement
-% =============================================================================
+
+% Return
 test(early_return) :-
     test_run_silent('../examples/test_return.pwat', result(Status, Returns)),
     assertion(Status == finished),
     assertion(Returns == [50, 40, 30, 20, 10]).  % Stack is LIFO
 
-% =============================================================================
-% TEST 12: Arithmetic - i32.add
-% =============================================================================
+
+% Optellen
 test(simple_add) :-
     TempFile = '/tmp/test_simple_add.pwat',
     write_test_file(TempFile,
@@ -246,9 +229,8 @@ test(simple_add) :-
     assertion(Status == finished),
     assertion(Returns == [8]).  % 3 + 5 = 8
 
-% =============================================================================
-% TEST 13: Comparison operators - i32.lt_s (less than signed)
-% =============================================================================
+
+% Kleiner dan
 test(compare_less_than_true) :-
     TempFile = '/tmp/test_lt.pwat',
     write_test_file(TempFile,
@@ -264,9 +246,8 @@ test(compare_less_than_true) :-
     assertion(Status == finished),
     assertion(Returns == [1]).
 
-% =============================================================================
-% TEST 14: Comparison operators - i32.gt_s (greater than signed)
-% =============================================================================
+
+% Groter dan
 test(compare_greater_than_false) :-
     TempFile = '/tmp/test_gt.pwat',
     write_test_file(TempFile,
@@ -282,9 +263,8 @@ test(compare_greater_than_false) :-
     assertion(Status == finished),
     assertion(Returns == [0]).
 
-% =============================================================================
-% TEST 15: Comparison operators - i32.eq (equals)
-% =============================================================================
+
+% Gelijk
 test(compare_equal_true) :-
     TempFile = '/tmp/test_eq.pwat',
     write_test_file(TempFile,
@@ -300,9 +280,8 @@ test(compare_equal_true) :-
     assertion(Status == finished),
     assertion(Returns == [1]).
 
-% =============================================================================
-% TEST 16: Nested expressions - Complex arithmetic
-% =============================================================================
+
+% Complexe rekenkunde
 test(complex_arithmetic) :-
     TempFile = '/tmp/test_complex.pwat',
     write_test_file(TempFile,
@@ -321,9 +300,8 @@ test(complex_arithmetic) :-
     assertion(Status == finished),
     assertion(Returns == [30]).
 
-% =============================================================================
-% TEST 17: Multiple return values
-% =============================================================================
+
+% Meerdere return values
 test(multiple_returns) :-
     TempFile = '/tmp/test_multi_return.pwat',
     write_test_file(TempFile,
@@ -339,9 +317,8 @@ test(multiple_returns) :-
     assertion(Status == finished),
     assertion(Returns == [3, 2, 1]).  % Stack is LIFO
 
-% =============================================================================
-% TEST 18: Stack operations - Multiple values on stack
-% =============================================================================
+
+% Meerdere waardes op stack
 test(stack_multiple_values) :-
     TempFile = '/tmp/test_stack.pwat',
     write_test_file(TempFile,
@@ -358,9 +335,8 @@ test(stack_multiple_values) :-
     assertion(Status == finished),
     assertion(Returns == [40, 30, 20, 10]).  % Stack is LIFO
 
-% =============================================================================
-% TEST 19: Nested loops (loop in block)
-% =============================================================================
+
+% Geneste lus
 test(nested_loop_and_block) :-
     TempFile = '/tmp/test_nested_loop.pwat',
     write_test_file(TempFile,
@@ -396,9 +372,8 @@ test(nested_loop_and_block) :-
     assertion(Status == finished),
     assertion(Returns == [3]).
 
-% =============================================================================
-% TEST 20: Negative numbers and multiplication
-% =============================================================================
+
+% Negatieve getallen
 test(negative_numbers) :-
     TempFile = '/tmp/test_negative.pwat',
     write_test_file(TempFile,

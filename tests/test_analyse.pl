@@ -6,34 +6,29 @@
 :- use_module('../src/function_runner').
 :- use_module(library(plunit)).
 
-% Helper: Check if analyse produces at least one result
 analyse_produces_result(File, MaxInstructions) :-
     parse(File, _Module), !,
     ContextIn = analyse(MaxInstructions, 0, [], [], []),
     analyse_file(File, ContextIn, analyse(_, _, _Inputs, _, _), result(_Status, _)), !.
 
-% Helper: Get first analyse result
 analyse_first_result(File, MaxInstructions, Status-Inputs) :-
     parse(File, _Module), !,
     ContextIn = analyse(MaxInstructions, 0, [], [], []),
     analyse_file(File, ContextIn, analyse(_, _, Inputs, _, _), result(Status, _)), !.
 
-% Helper: Count how many different Status values we get
 analyse_has_status(File, MaxInstructions, TargetStatus) :-
     parse(File, _Module), !,
     ContextIn = analyse(MaxInstructions, 0, [], [], []),
     analyse_file(File, ContextIn, analyse(_, _, _Inputs, _, _), result(Status, _)),
     Status = TargetStatus, !.
-
-% Helper: Write test file
 write_test_file(File, Content) :-
     open(File, write, Stream),
     write(Stream, Content),
     close(Stream).
 
-% =============================================================================
-% TEST 1: Simple arithmetic - produces finished result
-% =============================================================================
+
+% Eenvoudig rekenen
+
 test(analyse_simple_produces_result) :-
     TempFile = '/tmp/analyse_simple.pwat',
     write_test_file(TempFile,
@@ -47,9 +42,8 @@ test(analyse_simple_produces_result) :-
         )'),
     assertion(analyse_produces_result(TempFile, 100)).
 
-% =============================================================================
-% TEST 2: Unreachable instruction - produces trap
-% =============================================================================
+
+% Unreachable
 test(analyse_unreachable_traps) :-
     TempFile = '/tmp/analyse_unreachable.pwat',
     write_test_file(TempFile,
@@ -61,9 +55,8 @@ test(analyse_unreachable_traps) :-
         )'),
     assertion(analyse_has_status(TempFile, 100, trap)).
 
-% =============================================================================
-% TEST 3: Read produces analysis paths
-% =============================================================================
+
+% Read_int
 test(analyse_read_produces_paths) :-
     TempFile = '/tmp/analyse_read.pwat',
     write_test_file(TempFile,
@@ -78,9 +71,8 @@ test(analyse_read_produces_paths) :-
         )'),
     assertion(analyse_produces_result(TempFile, 100)).
 
-% =============================================================================
-% TEST 4: Division - can produce trap and finished
-% =============================================================================
+
+% Deling
 test(analyse_division_paths) :-
     TempFile = '/tmp/analyse_div.pwat',
     write_test_file(TempFile,
@@ -97,9 +89,8 @@ test(analyse_division_paths) :-
         )'),
     assertion(analyse_produces_result(TempFile, 100)).
 
-% =============================================================================
-% TEST 5: If condition produces paths
-% =============================================================================
+
+% If vertakkingen
 test(analyse_if_produces_branches) :-
     TempFile = '/tmp/analyse_if.pwat',
     write_test_file(TempFile,
@@ -123,9 +114,8 @@ test(analyse_if_produces_branches) :-
         )'),
     assertion(analyse_produces_result(TempFile, 100)).
 
-% =============================================================================
-% TEST 6: Multiple reads creates more paths
-% =============================================================================
+
+% Meerdere reads
 test(analyse_multiple_reads) :-
     TempFile = '/tmp/analyse_multi_read.pwat',
     write_test_file(TempFile,
@@ -154,9 +144,8 @@ test(analyse_multiple_reads) :-
         )'),
     assertion(analyse_produces_result(TempFile, 100)).
 
-% =============================================================================
-% TEST 7: Conditional unreachable produces trap
-% =============================================================================
+
+% Conditionele trap
 test(analyse_conditional_trap) :-
     TempFile = '/tmp/analyse_cond_trap.pwat',
     write_test_file(TempFile,
@@ -178,9 +167,8 @@ test(analyse_conditional_trap) :-
         )'),
     assertion(analyse_produces_result(TempFile, 100)).
 
-% =============================================================================
-% TEST 8: Loop with low instruction limit
-% =============================================================================
+
+% Lus met limiet
 test(analyse_loop_with_limit) :-
     TempFile = '/tmp/analyse_loop.pwat',
     write_test_file(TempFile,
@@ -205,9 +193,8 @@ test(analyse_loop_with_limit) :-
         )'),
     assertion(analyse_produces_result(TempFile, 50)).
 
-% =============================================================================
-% TEST 9: Nested if/else conditions
-% =============================================================================
+
+% Geneste voorwaarden
 test(analyse_nested_conditions) :-
     TempFile = '/tmp/analyse_nested.pwat',
     write_test_file(TempFile,
@@ -243,9 +230,8 @@ test(analyse_nested_conditions) :-
         )'),
     assertion(analyse_produces_result(TempFile, 100)).
 
-% =============================================================================
-% TEST 10: First result contains status-inputs pair
-% =============================================================================
+
+% Result structuur
 test(analyse_result_structure) :-
     TempFile = '/tmp/analyse_result.pwat',
     write_test_file(TempFile,

@@ -6,26 +6,22 @@
 :- use_module('../src/function_runner').
 :- use_module(library(plunit)).
 
-% Helper: Check if paths produces at least one result
 paths_produces_result(File, MaxInstructions) :-
     parse(File, _Module), !,
     ContextIn = analyse(MaxInstructions, 0, [], [], []),
     analyse_file(File, ContextIn, analyse(_, _, _Inputs, _, _PathTrace), result(_Status, _)), !.
 
-% Helper: Get first paths result
 paths_first_result(File, MaxInstructions, Status-Inputs) :-
     parse(File, _Module), !,
     ContextIn = analyse(MaxInstructions, 0, [], [], []),
     analyse_file(File, ContextIn, analyse(_, _, Inputs, _, _PathTrace), result(Status, _)), !.
 
-% Helper: Check if paths finds specific status
 paths_has_status(File, MaxInstructions, TargetStatus) :-
     parse(File, _Module), !,
     ContextIn = analyse(MaxInstructions, 0, [], [], []),
     analyse_file(File, ContextIn, analyse(_, _, _Inputs, _, _PathTrace), result(Status, _)),
     Status = TargetStatus, !.
 
-% Helper: Count unique paths by collecting all Status values
 paths_count_statuses(File, MaxInstructions, Count) :-
     parse(File, _Module), !,
     findall(Status,
@@ -35,16 +31,12 @@ paths_count_statuses(File, MaxInstructions, Count) :-
         ),
         AllStatuses),
     length(AllStatuses, Count).
-
-% Helper: Write test file
 write_test_file(File, Content) :-
     open(File, write, Stream),
     write(Stream, Content),
     close(Stream).
 
-% =============================================================================
-% TEST 1: Simple program - single path
-% =============================================================================
+% Eenvoudig, één pad
 test(paths_simple_single_path) :-
     TempFile = '/tmp/paths_simple.pwat',
     write_test_file(TempFile,
@@ -56,9 +48,8 @@ test(paths_simple_single_path) :-
         )'),
     assertion(paths_produces_result(TempFile, 100)).
 
-% =============================================================================
-% TEST 2: Unreachable - always trap path
-% =============================================================================
+
+% Unreachable
 test(paths_unreachable) :-
     TempFile = '/tmp/paths_unreachable.pwat',
     write_test_file(TempFile,
@@ -70,9 +61,8 @@ test(paths_unreachable) :-
         )'),
     assertion(paths_has_status(TempFile, 100, trap)).
 
-% =============================================================================
-% TEST 3: If creates two paths
-% =============================================================================
+
+% If met twee paden
 test(paths_if_creates_branches) :-
     TempFile = '/tmp/paths_if_branch.pwat',
     write_test_file(TempFile,
@@ -97,9 +87,8 @@ test(paths_if_creates_branches) :-
     paths_count_statuses(TempFile, 100, Count),
     assertion(Count > 1).
 
-% =============================================================================
-% TEST 4: Multiple if statements - exponential paths
-% =============================================================================
+
+% Meerdere ifs
 test(paths_multiple_ifs) :-
     TempFile = '/tmp/paths_multi_ifs.pwat',
     write_test_file(TempFile,
@@ -136,9 +125,8 @@ test(paths_multiple_ifs) :-
     paths_count_statuses(TempFile, 100, Count),
     assertion(Count >= 3).  % At least 3 different paths
 
-% =============================================================================
-% TEST 5: Read int produces multiple paths
-% =============================================================================
+
+% Read_int paden
 test(paths_read_int_paths) :-
     TempFile = '/tmp/paths_read.pwat',
     write_test_file(TempFile,
@@ -153,9 +141,8 @@ test(paths_read_int_paths) :-
         )'),
     assertion(paths_produces_result(TempFile, 100)).
 
-% =============================================================================
-% TEST 6: Trap and finished paths mixed
-% =============================================================================
+
+% Trap en finished gemengd
 test(paths_mixed_trap_finished) :-
     TempFile = '/tmp/paths_mixed.pwat',
     write_test_file(TempFile,
@@ -179,9 +166,8 @@ test(paths_mixed_trap_finished) :-
         )'),
     assertion(paths_has_status(TempFile, 100, finished)).
 
-% =============================================================================
-% TEST 7: Division with controlled inputs
-% =============================================================================
+
+% Deling paden
 test(paths_division_paths) :-
     TempFile = '/tmp/paths_division.pwat',
     write_test_file(TempFile,
@@ -199,9 +185,8 @@ test(paths_division_paths) :-
     paths_count_statuses(TempFile, 100, Count),
     assertion(Count > 1).
 
-% =============================================================================
-% TEST 8: Loop with paths
-% =============================================================================
+
+% Lus paden
 test(paths_loop) :-
     TempFile = '/tmp/paths_loop.pwat',
     write_test_file(TempFile,
@@ -226,9 +211,8 @@ test(paths_loop) :-
         )'),
     assertion(paths_produces_result(TempFile, 100)).
 
-% =============================================================================
-% TEST 9: Result structure has status and inputs
-% =============================================================================
+
+% Result structuur
 test(paths_result_structure) :-
     TempFile = '/tmp/paths_struct.pwat',
     write_test_file(TempFile,
@@ -240,9 +224,8 @@ test(paths_result_structure) :-
         )'),
     paths_first_result(TempFile, 100, _-_).
 
-% =============================================================================
-% TEST 10: Nested conditions create complex paths
-% =============================================================================
+
+% Geneste voorwaarden
 test(paths_nested_conditions) :-
     TempFile = '/tmp/paths_nested.pwat',
     write_test_file(TempFile,
