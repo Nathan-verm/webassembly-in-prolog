@@ -13,6 +13,10 @@ dispatch([analyse, File, MaxInstructions|_]) :-
     !,
     analyse_dispatch(File, MaxInstructions).
 
+dispatch([analyse, File|_]) :-
+    !,
+    analyse_dispatch(File, 1000).
+
 dispatch([paths, File, MaxInstructions|_]) :-
     !,
     paths_dispatch(File, MaxInstructions).
