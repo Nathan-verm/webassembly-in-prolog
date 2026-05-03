@@ -124,11 +124,14 @@ paths_dispatch(_File, MaxInstructionsRaw) :-
     halt(1).
 
 parse_max_instructions(MaxInstructionsRaw, MaxInstructions) :-
-    ( integer(MaxInstructionsRaw) ->
-        MaxInstructions = MaxInstructionsRaw
-    ;
-        catch(atom_number(MaxInstructionsRaw, MaxInstructions), _, fail)
-    ),
+    integer(MaxInstructionsRaw),
+    MaxInstructions = MaxInstructionsRaw,
+    integer(MaxInstructions),
+    MaxInstructions > 0.
+
+parse_max_instructions(MaxInstructionsRaw, MaxInstructions) :-
+    \+ integer(MaxInstructionsRaw),
+    catch(atom_number(MaxInstructionsRaw, MaxInstructions), _, fail),
     integer(MaxInstructions),
     MaxInstructions > 0.
 
