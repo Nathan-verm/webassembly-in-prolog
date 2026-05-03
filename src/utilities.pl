@@ -38,7 +38,7 @@ init_locals(Args, LocalCount, Locals) :-
 binary_op([B, A|Rest], [R|Rest], Op, continue) :-
     eval_binop(Op, A, B, R), !.
 
-binary_op(Stack, Stack, _Op, trap). % als er al een trap gegenereerd werd => doe niets
+binary_op(Stack, Stack, _Op, invalid). % stack te klein => ongeldig programma
 
 eval_binop(+, A, B, R) :- R is A + B.
 eval_binop(-, A, B, R) :- R is A - B.

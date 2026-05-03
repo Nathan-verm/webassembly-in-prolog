@@ -33,12 +33,20 @@ run_dispatch(File) :-
     run_file(File, result(Status, Returns)),
     !,
     format('State: ~w~n', [Status]),
-    format('Returns: ~w~n', [Returns]).
+    format('Returns: ~w~n', [Returns]),
+    halt_for_run_status(Status).
 
 % foutgeval
 run_dispatch(File) :-
     format(user_error, 'ERROR: uitvoering van ~w mislukt~n', [File]),
     halt(1).
+
+halt_for_run_status(trap) :-
+    halt(2).
+halt_for_run_status(invalid) :-
+    format(user_error, 'ERROR: ongeldig programma~n', []),
+    halt(1).
+halt_for_run_status(finished).
 
 
 analyse_dispatch(File, MaxInstructionsRaw) :-
@@ -49,6 +57,12 @@ analyse_dispatch(File, MaxInstructionsRaw) :-
             analyse_file(File, ContextIn, analyse(_, _, Inputs, _, PathTrace), result(Status, _Returns))
         ),
         AllResults),
+    ( member(invalid-_-_, AllResults) ->
+        format(user_error, 'ERROR: ongeldig programma~n', []),
+        halt(1)
+    ;
+        true
+    ),
     findall(PathTrace-Path,
         (
             member(trap-Inputs-PathTraceRev, AllResults),
@@ -83,6 +97,12 @@ paths_dispatch(File, MaxInstructionsRaw) :-
             analyse_file(File, ContextIn, analyse(_, _, Inputs, _, PathTrace), result(Status, _Returns))
         ),
         AllResults),
+    ( member(invalid-_-_, AllResults) ->
+        format(user_error, 'ERROR: ongeldig programma~n', []),
+        halt(1)
+    ;
+        true
+    ),
     findall(Key-Path-Status,
         (
             member(Status-Inputs-PathTraceRev, AllResults),

@@ -9,20 +9,32 @@
 
 call_primitive(Name, StackIn, Memory, StackOut, Signal, ContextIn, ContextOut) :-
     primitive_arity(Name, Arity),
+    stack_has_n(StackIn, Arity),
     pop_n(Arity, StackIn, RawArgs, StackRest),
     reverse(RawArgs, Args),
     run_primitive(Name, Args, Memory, PrimitiveReturns, PrimitiveStatus, ContextIn, ContextOut),
     handle_primitive_result(PrimitiveStatus, PrimitiveReturns, StackIn, StackRest, StackOut, Signal).
 
-call_primitive(Name, Stack, _Memory, Stack, trap, Context, Context) :-
+call_primitive(Name, Stack, _Memory, Stack, invalid, Context, Context) :-
+    primitive_arity(Name, Arity),
+    \+ stack_has_n(Stack, Arity).
+
+call_primitive(Name, Stack, _Memory, Stack, invalid, Context, Context) :-
     \+ primitive_arity(Name, _).
 
 % if trap has been made
 handle_primitive_result(trap, _Returns, StackIn, _StackRest, StackIn, trap).
+handle_primitive_result(invalid, _Returns, StackIn, _StackRest, StackIn, invalid).
 
 % if succes => continue
 handle_primitive_result(continue, Returns, _StackIn, StackRest, StackOut, continue) :-
     append_rev(Returns, StackRest, StackOut).
+
+stack_has_n(_Stack, 0) :- !.
+stack_has_n([_|Rest], N) :-
+    N > 0,
+    N1 is N - 1,
+    stack_has_n(Rest, N1).
 
 primitive_arity(read_int, 2).
 primitive_arity(rand_int, 2).
@@ -73,7 +85,7 @@ run_primitive(rand_int, [Min, Max], _Memory, [Value], continue, Context, Context
     !.
 
 % should not be possible because parser should already fail but just in case
-run_primitive(Name, _Args, _Memory, [], trap, Context, Context) :-
+run_primitive(Name, _Args, _Memory, [], invalid, Context, Context) :-
     \+ primitive_arity(Name, _).
 
 
