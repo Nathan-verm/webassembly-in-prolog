@@ -7,7 +7,6 @@
 
 run_file(File, Result) :-
     parse(File, Module),
-    writeln(Module),
     run_module(Module, Result).
 
 run_module(Module, result(Status, Returns)) :-
