@@ -184,13 +184,19 @@ execute_function(Index, Args, Module, Memory, Returns, Status, ContextIn, Contex
 
 De concrete implementatie en verdere predicaten staan in \texttt{src/function\_runner.pl}. De CLI-entry en dispatch-logica staat in \texttt{src/main.pl} en de functies \texttt{run\_file/2} en \texttt{analyse\_file/4} in \texttt{src/runner.pl} zorgen voor het opbouwen van geheugen en het starten van \texttt{execute\_function/8}.
 
-Traps versus normale returns: wanneer \texttt{exec\_instruction/10} een foutsignaal (\texttt{trap}) teruggeeft, dan wordt dit doorgegeven tot \texttt{handle\_function\_signal/5} en resulteert het eindstatus-argument in \texttt{trap} (zie \texttt{src/function\_runner.pl}: \texttt{handle\_function\_signal(trap, ..., [], trap)} en \texttt{prepare\_to\_return/6}). Bij een normale finish is het eindstatus \texttt{finished} en worden de bovenste returnwaarden van de stack gehaald. Bij een CLI-run wordt deze status geprint door \texttt{src/main.pl}'s \texttt{run\_dispatch/1} (de regel met \texttt{format('State: ~w~n', [Status])}). Fouten in de uitvoering die leiden tot een ongeparste of niet-uitvoerbare module worden door \texttt{main.pl} afgevangen en resulteren in een foutmelding op \texttt{stderr} en \texttt{exit(1)}.
+Traps versus normale returns: wanneer \texttt{exec\_instruction/10} een foutsignaal (\texttt{trap}) teruggeeft, dan wordt dit doorgegeven
+tot \texttt{handle\_function\_signal/5} en resulteert het eindstatus-argument in \texttt{trap} (zie \texttt{src/function\_runner.pl}:
+\texttt{handle\_function\_signal(trap, ..., [], trap)} en \texttt{prepare\_to\_return/6}). Voor ongeldige programma's gebruiken we de status \texttt{invalid}. 
+
+Bij een normale finish is het eindstatus \texttt{finished} en worden de bovenste returnwaarden van de stack gehaald.
+Fouten in de uitvoering die leiden tot een ongeparste of niet-uitvoerbare module worden door
+\texttt{main.pl} afgevangen en resulteren in een foutmelding op \texttt{stderr} en \texttt{exit(1)}.
 
 De analyse-context en instructielimiet worden hieronder verder toegelicht.
 
 Opmerking over de stack: de startfunctie begint met een lege operand-stack, en elke functie-uitvoering
 krijgt een eigen lege stack. Dit volgt de WebAssembly-semantiek waarbij argumenten van de caller-stack
-worden gepopt bij een 	exttt{call} en de returnwaarden nadien terug op de caller-stack geplaatst worden.
+worden gepopt bij een \texttt{call} en de returnwaarden nadien terug op de caller-stack geplaatst worden.
 Daardoor is er conceptueel geen globale operand-stack die doorheen alle functies doorloopt, maar de
 zichtbare effecten bij een call zijn identiek aan de specificatie. Ik vermeld dit omdat ik niet zeker wist 
 ofdat dit ok was volgens de opgave. Want de opgave spreekt precies over 1 globale stack, wat ik dus verwarrend vond.
@@ -221,6 +227,7 @@ Elke instructie kan 1 van de volgende signalen teruggeven:
     \item \texttt{continue} : ga verder met de volgende instructie
     \item \texttt{returned} : stop de functie-uitvoering
     \item \texttt{trap} : er is een fout opgetreden
+    \item \texttt{invalid} : ongeldig programma (bv. stack-underflow of ongeldige local)
     \item \texttt{break(N)} : verlaat een block of loop op niveau $N$
 \end{itemize}
 
@@ -236,7 +243,7 @@ Alle berekeningen gebeuren via een stack, volledig analoog aan WebAssembly:
     \item \texttt{local\_get}, \texttt{local\_set} en \texttt{local\_tee} manipuleren de locals via de stack.
 \end{itemize}
 
-Indien een instructie onvoldoende waarden op de stack vindt of een ongeldige local aanspreekt, wordt een \texttt{trap} gegenereerd.
+Indien een instructie onvoldoende waarden op de stack vindt of een ongeldige local aanspreekt, wordt een \texttt{invalid} gegenereerd.
 
 \subsection*{Control flow: block, loop, if en branches}
 
