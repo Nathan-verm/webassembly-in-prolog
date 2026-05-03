@@ -60,4 +60,17 @@ test(run_exit_invalid_is_one) :-
     run_cli_exit(['run', TempFile], Status),
     assertion(Status == exit(1)).
 
+
+test(run_exit_invalid_local_get_is_one) :-
+    TempFile = '/tmp/test_exit_invalid_local.pwat',
+    write_test_file(TempFile,
+        '(module
+          (start 0)
+          (func (args 0) (locals 0) (results 1)
+            local.get 0
+          )
+        )'),
+    run_cli_exit(['run', TempFile], Status),
+    assertion(Status == exit(1)).
+
 :- end_tests(exit_codes).
