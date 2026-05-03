@@ -188,6 +188,13 @@ Traps versus normale returns: wanneer \texttt{exec\_instruction/10} een foutsign
 
 De analyse-context en instructielimiet worden hieronder verder toegelicht.
 
+Opmerking over de stack: de startfunctie begint met een lege operand-stack, en elke functie-uitvoering
+krijgt een eigen lege stack. Dit volgt de WebAssembly-semantiek waarbij argumenten van de caller-stack
+worden gepopt bij een 	exttt{call} en de returnwaarden nadien terug op de caller-stack geplaatst worden.
+Daardoor is er conceptueel geen globale operand-stack die doorheen alle functies doorloopt, maar de
+zichtbare effecten bij een call zijn identiek aan de specificatie. Ik vermeld dit omdat ik niet zeker wist 
+ofdat dit ok was volgens de opgave. Want de opgave spreekt precies over 1 globale stack, wat ik dus verwarrend vond.
+
 Dit predicaat vormt de volledige levenscyclus van een functie-uitvoering:
 
 \begin{itemize}
