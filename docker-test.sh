@@ -1,0 +1,1 @@
+docker run -it -v .:/project masteeve/logprog-2526
