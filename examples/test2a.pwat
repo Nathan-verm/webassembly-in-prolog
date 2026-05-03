@@ -1,0 +1,33 @@
+(module 
+    (start 0) 
+
+    ;; Main function
+    (func (args 0) (locals 1) (results 0)
+        i32.const 0
+        local.set 0
+
+        loop
+            ;; Read number
+            i32.const 0
+            i32.const 100
+            call read_int
+
+            ;; < 10?
+            i32.const 10
+            i32.lt_s
+            if
+                nop
+            else
+                nop
+            end
+
+            local.get 0
+            i32.const 1
+            i32.add
+            local.tee 0
+            i32.const 2
+            i32.lt_s
+            br_if 0
+        end
+    )
+)
