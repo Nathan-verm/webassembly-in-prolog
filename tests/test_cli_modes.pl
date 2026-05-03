@@ -15,6 +15,9 @@ run_cli(Args, Lines) :-
     exclude(=(""), RawLines, Lines).
 
 run_cli_with_input(Args, Input, Lines) :-
+    run_cli_with_input_exit(Args, Input, exit(0), Lines).
+
+run_cli_with_input_exit(Args, Input, ExpectedExit, Lines) :-
     process_create(path(swipl),
         ['-q', '-s', '../src/main.pl', '--' | Args],
         [stdin(pipe(In)), stdout(pipe(Out)), process(PID)]),
@@ -23,7 +26,7 @@ run_cli_with_input(Args, Input, Lines) :-
     read_string(Out, _, Output),
     close(Out),
     process_wait(PID, Status),
-    assertion(Status == exit(0)),
+    assertion(Status == ExpectedExit),
     split_string(Output, "\n", "\n \t", RawLines),
     exclude(=(""), RawLines, Lines).
 
@@ -64,7 +67,7 @@ test(run_more_paths_finished_state) :-
 
 
 test(run_more_paths_trap_state) :-
-    run_cli_with_input(['run', '../examples/test_more_paths.pwat'], "4\n3\n", Lines),
+    run_cli_with_input_exit(['run', '../examples/test_more_paths.pwat'], "4\n3\n", exit(2), Lines),
     assertion(member("State: trap", Lines)),
     assertion(member("Returns: []", Lines)).
 
