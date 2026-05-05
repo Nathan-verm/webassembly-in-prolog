@@ -16,7 +16,7 @@ run_module(Module, result(Status, Returns)) :-
 
 
 analyse_file(File, ContextIn, ContextOut, Result) :-
-    once(parse(File, Module)),
+    parse(File, Module),
     analyse_module(Module, ContextIn, ContextOut, Result).
 
 analyse_module(Module, ContextIn, ContextOut, result(Status, Returns)) :-
