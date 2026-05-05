@@ -1,13 +1,13 @@
 #!/usr/bin/env swipl
 :- use_module(runner).
 
+:- discontiguous analyse_dispatch/2.
+
 main :-
     current_prolog_flag(argv, Argv),
     dispatch(Argv).
 
-% =========================================================
-% Dispatch
-% =========================================================
+% parsen van argumenten en dispatch van verschillende commandos
 
 dispatch([run, File|_]) :-
     !,
@@ -39,9 +39,8 @@ print_usage :-
     writeln('  swipl -q -s src/main.pl -- analyse <file.pwat> <max_instructions>'),
     writeln('  swipl -q -s src/main.pl -- paths <file.pwat> [max_instructions]').
 
-% =========================================================
-% Run
-% =========================================================
+
+% run command
 
 run_dispatch(File) :-
     run_file(File, result(Status, Returns)),
@@ -66,29 +65,18 @@ halt_for_run_status(finished).
 
 
 % analyse command
+
 analyse_dispatch(File, MaxInstructionsRaw) :-
     parse_max_instructions(MaxInstructionsRaw, MaxInstructions),
     !,
     collect_all_results(File, MaxInstructions, AllResults),
-    abort_if_invalid(AllResults),
-    collect_trap_candidates(AllResults, TrapCandidates),
-    collect_finished_path_traces(AllResults, FinishedPathTraces),
+    abort_if_invalid(AllResults), % als ergens een pad naar een invalid uitvoering leidt => stop analsye met exit code 1
+    collect_trap_candidates(AllResults, TrapCandidates), % houd enkel traces over die leiden tot een trap
+    collect_finished_path_traces(AllResults, FinishedPathTraces), % houd enkel traces over die volledig uitgevoerd zijn
     filter_trap_candidates(FinishedPathTraces, TrapCandidates, FilteredCandidates),
     sort_and_deduplicate_traps(FilteredCandidates, UniqueInputs),
     print_trap_paths(UniqueInputs).
 
-    
-print_ten([A,B,C,D,E,F,G,H,I,J | _]) :-
-    writeln(A),
-    writeln(B),
-    writeln(C),
-    writeln(D),
-    writeln(E),
-    writeln(F),
-    writeln(G),
-    writeln(H),
-    writeln(I),
-    writeln(J).
 
 analyse_dispatch(_File, MaxInstructionsRaw) :-
     format(user_error, 'ERROR: max_instructions moet een positief geheel getal zijn, kreeg: ~w~n', [MaxInstructionsRaw]),
@@ -115,9 +103,8 @@ collect_finished_path_traces(AllResults, FinishedPathTraces) :-
         FinishedPathTraces
     ).
 
-filter_trap_candidates(FinishedPathTraces, TrapCandidates, FilteredCandidates) :-
-    exclude(trap_shadowed_by_finished(FinishedPathTraces), TrapCandidates, NonShadowed),
-    prefer_complete_trap_paths(NonShadowed, Complete),
+filter_trap_candidates(_FinishedPathTraces, TrapCandidates, FilteredCandidates) :-
+    prefer_complete_trap_paths(TrapCandidates, Complete),
     prefer_decision_paths(Complete, FilteredCandidates).
 
 sort_and_deduplicate_traps(Candidates, UniqueInputs) :-
@@ -126,8 +113,8 @@ sort_and_deduplicate_traps(Candidates, UniqueInputs) :-
     maplist(sort_pair_to_trap_candidate, SortedPairs, Sorted),
     keep_first_input_per_path(Sorted, UniqueInputs).
 
-trap_candidate_to_sort_pair(trap_candidate(Path, Inputs), pair(Path, trap_candidate(Path, Inputs))).
-sort_pair_to_trap_candidate(pair(_, Candidate), Candidate).
+trap_candidate_to_sort_pair(trap_candidate(Path, Inputs), Path-trap_candidate(Path, Inputs)).
+sort_pair_to_trap_candidate(_-Candidate, Candidate).
 
 % paths command
 
@@ -136,9 +123,8 @@ paths_dispatch(File, MaxInstructionsRaw) :-
     !,
     collect_all_results(File, MaxInstructions, AllResults),
     abort_if_invalid(AllResults),
-    collect_path_candidates(AllResults, RawCandidates),
-    filter_path_candidates(RawCandidates, FilteredCandidates),
-    sort_and_deduplicate_paths(FilteredCandidates, UniqueResults),
+    collect_path_candidates(AllResults, RawCandidates), % zet AllResults (Status-Inputs-PathTraceRev) om naar path_candidate(PathTrace, Status, Path)
+    sort_and_deduplicate_paths(RawCandidates, UniqueResults),
     print_path_results(UniqueResults).
 
 paths_dispatch(_File, MaxInstructionsRaw) :-
@@ -156,10 +142,6 @@ collect_path_candidates(AllResults, Candidates) :-
         Candidates
     ).
 
-% Fast filtering: suppress shadowed traps, then let sort_and_deduplicate_paths
-% handle all keysort and deduplication in one O(n log n) pass
-filter_path_candidates(RawCandidates, FilteredCandidates) :-
-    suppress_shadowed_traps(RawCandidates, FilteredCandidates).
 
 sort_and_deduplicate_paths(Candidates, UniqueResults) :-
     maplist(path_candidate_to_sort_pair, Candidates, Pairs),
@@ -186,6 +168,7 @@ run_analysis(File, MaxInstructions, Status, Inputs, PathTrace) :-
     analyse_file(File, ContextIn, analyse(_, _, Inputs, _, PathTrace), result(Status, _Returns)).
 
 
+% check ofdat er een invalid entry is in AllResults
 abort_if_invalid(AllResults) :-
     member(invalid-_-_, AllResults),
     !,
@@ -206,9 +189,6 @@ parse_max_instructions(MaxInstructionsRaw, MaxInstructions) :-
     MaxInstructions > 0.
 
 % filteren van traps
-
-trap_shadowed_by_finished(FinishedPathTraces, trap_candidate(PathTrace, _)) :-
-    member(PathTrace, FinishedPathTraces).
 
 prefer_complete_trap_paths(TrapCandidates, CompleteTrapCandidates) :-
     exclude(has_longer_trap_extension(TrapCandidates), TrapCandidates, CompleteTrapCandidates).
@@ -231,29 +211,6 @@ has_non_empty_trap_path([_|Rest]) :-
     has_non_empty_trap_path(Rest).
 
 is_empty_trap_candidate(trap_candidate([], _)).
-
-% filteren van paths
-
-suppress_shadowed_traps(RawCandidates, FilteredCandidates) :-
-    collect_finished_traces_from_candidates(RawCandidates, FinishedTraces),
-    exclude(is_shadowed_trap_candidate(FinishedTraces), RawCandidates, FilteredCandidates).
-
-collect_finished_traces_from_candidates(Candidates, FinishedTraces) :-
-    findall(
-        PathTrace,
-        member(path_candidate(PathTrace, finished, _), Candidates),
-        FinishedTraces
-    ).
-
-is_shadowed_trap_candidate(FinishedPathTraces, path_candidate(PathTrace, trap, _)) :-
-    member(PathTrace, FinishedPathTraces).
-
-% Removed: prefer_complete_paths is now handled efficiently in deduplicate_by_key
-% The keysort + keep_first approach already ensures we get the maximal non-prefix paths.
-
-% Removed: prefer_decision_paths_with_state is now integrated into deduplicate_by_key
-% Empty paths are kept unless all paths are non-empty (which is a rare case)
-
 
 % verwijder duplicates
 
