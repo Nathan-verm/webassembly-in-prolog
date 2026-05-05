@@ -94,14 +94,13 @@ convert_trap_to_candidate(trap-Inputs-PathTraceRev, trap_candidate(PathTrace, Pa
     reverse(Inputs, Path).
 
 collect_finished_path_traces(AllResults, FinishedPathTraces) :-
-    findall(
-        PathTrace,
-        (
-            member(finished-_-PathTraceRev, AllResults),
-            reverse(PathTraceRev, PathTrace)
-        ),
-        FinishedPathTraces
-    ).
+    include(is_finished_result, AllResults, FinishedResults),
+    maplist(convert_finished_to_trace, FinishedResults, FinishedPathTraces).
+
+is_finished_result(finished-_-_).
+
+convert_finished_to_trace(finished-_-PathTraceRev, PathTrace) :-
+    reverse(PathTraceRev, PathTrace).
 
 filter_trap_candidates(_FinishedPathTraces, TrapCandidates, FilteredCandidates) :-
     prefer_complete_trap_paths(TrapCandidates, Complete),
@@ -115,6 +114,7 @@ sort_and_deduplicate_traps(Candidates, UniqueInputs) :-
 
 trap_candidate_to_sort_pair(trap_candidate(Path, Inputs), Path-trap_candidate(Path, Inputs)).
 sort_pair_to_trap_candidate(_-Candidate, Candidate).
+
 
 % paths command
 
@@ -132,15 +132,14 @@ paths_dispatch(_File, MaxInstructionsRaw) :-
     halt(1).
 
 collect_path_candidates(AllResults, Candidates) :-
-    findall(
-        path_candidate(PathTrace, Status, Path),
-        (
-            member(Status-Inputs-PathTraceRev, AllResults),
-            reverse(PathTraceRev, PathTrace),
-            reverse(Inputs, Path)
-        ),
-        Candidates
-    ).
+    include(is_path_result, AllResults, PathResults),
+    maplist(convert_path_to_candidate, PathResults, Candidates).
+
+is_path_result(_Status-_-_).
+
+convert_path_to_candidate(Status-Inputs-PathTraceRev, path_candidate(PathTrace, Status, Path)) :-
+    reverse(PathTraceRev, PathTrace),
+    reverse(Inputs, Path).
 
 
 sort_and_deduplicate_paths(Candidates, UniqueResults) :-
