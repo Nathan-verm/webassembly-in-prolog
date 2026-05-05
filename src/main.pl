@@ -69,12 +69,12 @@ halt_for_run_status(finished).
 analyse_dispatch(File, MaxInstructionsRaw) :-
     parse_max_instructions(MaxInstructionsRaw, MaxInstructions),
     !,
-    collect_all_results(File, MaxInstructions, AllResults),
+    collect_all_results(File, MaxInstructions, AllResults), % voer de file uit en krijg alle mogelijke traces (wordt zowel gebruikt door analyse als paths)
     abort_if_invalid(AllResults), % als ergens een pad naar een invalid uitvoering leidt => stop analsye met exit code 1
     collect_trap_candidates(AllResults, TrapCandidates), % houd enkel traces over die leiden tot een trap
     collect_finished_path_traces(AllResults, FinishedPathTraces), % houd enkel traces over die volledig uitgevoerd zijn
-    filter_trap_candidates(FinishedPathTraces, TrapCandidates, FilteredCandidates),
-    sort_and_deduplicate_traps(FilteredCandidates, UniqueInputs),
+    filter_trap_candidates(FinishedPathTraces, TrapCandidates, FilteredCandidates), % voor analyse willen we enkel paden die resulteren in een trap
+    sort_and_deduplicate_traps(FilteredCandidates, UniqueInputs), % er zijn veel duplicate traces, in de output willen we voor elk maar 1 (en sorteer) 
     print_trap_paths(UniqueInputs).
 
 
@@ -82,16 +82,16 @@ analyse_dispatch(_File, MaxInstructionsRaw) :-
     format(user_error, 'ERROR: max_instructions moet een positief geheel getal zijn, kreeg: ~w~n', [MaxInstructionsRaw]),
     halt(1).
 
+
 collect_trap_candidates(AllResults, TrapCandidates) :-
-    findall(
-        trap_candidate(PathTrace, Path),
-        (
-            member(trap-Inputs-PathTraceRev, AllResults),
-            reverse(PathTraceRev, PathTrace),
-            reverse(Inputs, Path)
-        ),
-        TrapCandidates
-    ).
+    include(is_trap_result, AllResults, TrapResults),
+    maplist(convert_trap_to_candidate, TrapResults, TrapCandidates).
+
+is_trap_result(trap-_-_).
+
+convert_trap_to_candidate(trap-Inputs-PathTraceRev, trap_candidate(PathTrace, Path)) :-
+    reverse(PathTraceRev, PathTrace),
+    reverse(Inputs, Path).
 
 collect_finished_path_traces(AllResults, FinishedPathTraces) :-
     findall(
