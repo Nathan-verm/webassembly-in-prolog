@@ -19,8 +19,8 @@ jobs:
       with:
         test-name: Basic docker tests
         setup-command: ''
-        command: docker run -it -v .:/project masteeve/logprog-2526
-        timeout: 10
+        command: docker run -t -v .:/project masteeve/logprog-2526
+        timeout: 2
     - name: Autograding Reporter
       uses: classroom-resources/autograding-grading-reporter@v1
       env:
