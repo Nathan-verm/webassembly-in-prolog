@@ -284,10 +284,10 @@ Hierdoor kan 'exact' dezelfde interpreter zowel voor effectieve uitvoering als v
 De \texttt{analyse} en \texttt{paths} modi gebruiken dezelfde interpreter als de \texttt{run}-modus, maar met een context die extra informatie bijhoudt.
 Die context wordt in \texttt{src/main.pl} aangemaakt:
 \begin{lstlisting}
-ContextIn = analyse(MaxInstructions, 0, [], [], []).
+ContextIn = analyse(MaxInstructions, 0, [], []).
 \end{lstlisting}
 
-De term heeft de vorm \texttt{analyse(MaxInstructions, CurrentCounter, Inputs, BadInputs, PathTrace)}. Tijdens de uitvoering worden velden bijgewerkt door \texttt{src/function\_runner.pl}:
+De term heeft de vorm \texttt{analyse(MaxInstructions, CurrentCounter, Inputs, PathTrace)}. Tijdens de uitvoering worden velden bijgewerkt door \texttt{src/function\_runner.pl}:
 
 \begin{itemize}
     \item \texttt{increment\_instruction\_counter/2} verhoogt \texttt{CurrentCounter} na elke instructie.

@@ -169,8 +169,8 @@ collect_all_results(File, MaxInstructions, AllResults) :-
     ).
 
 run_analysis(File, MaxInstructions, Status, Inputs, PathTrace) :-
-    ContextIn = analyse(MaxInstructions, 0, [], [], []),
-    analyse_file(File, ContextIn, analyse(_, _, Inputs, _, PathTrace), result(Status, _Returns)).
+    ContextIn = analyse(MaxInstructions, 0, [], []),
+    analyse_file(File, ContextIn, analyse(_, _, Inputs, PathTrace), result(Status, _Returns)).
 
 
 % check ofdat er een invalid entry is in AllResults

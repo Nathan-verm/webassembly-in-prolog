@@ -54,11 +54,11 @@ exec_instructions([Instr|Rest], Module, LocalsIn, LocalsOut, StackIn, StackOut, 
     increment_instruction_counter(ContextOutExecute, IncrementedContext),
     continue_or_stop(StepSignal, Rest, Module, Locals1, LocalsOut, Stack1, StackOut, Memory, Signal, IncrementedContext, ContextOut).
 
-increment_instruction_counter(analyse(MaxInstructions, CurrentCounter, Inputs, BadInputs), analyse(MaxInstructions, IncCurrentCounter, Inputs, BadInputs)) :-
+increment_instruction_counter(analyse(MaxInstructions, CurrentCounter, Inputs), analyse(MaxInstructions, IncCurrentCounter, Inputs)) :-
     integer(CurrentCounter),
     IncCurrentCounter is CurrentCounter + 1.
 
-increment_instruction_counter(analyse(MaxInstructions, CurrentCounter, Inputs, BadInputs, PathTrace), analyse(MaxInstructions, IncCurrentCounter, Inputs, BadInputs, PathTrace)) :-
+increment_instruction_counter(analyse(MaxInstructions, CurrentCounter, Inputs, PathTrace), analyse(MaxInstructions, IncCurrentCounter, Inputs, PathTrace)) :-
     integer(CurrentCounter),
     IncCurrentCounter is CurrentCounter + 1.
 
@@ -66,7 +66,7 @@ increment_instruction_counter(analyse(MaxInstructions, CurrentCounter, Inputs, B
 increment_instruction_counter(run, run).
 
 
-record_branch_decision(analyse(MaxInstructions, Counter, Inputs, BadInputs, PathTraceIn), Decision, analyse(MaxInstructions, Counter, Inputs, BadInputs, [Decision|PathTraceIn])) :-
+record_branch_decision(analyse(MaxInstructions, Counter, Inputs, PathTraceIn), Decision, analyse(MaxInstructions, Counter, Inputs, [Decision|PathTraceIn])) :-
     !.
 record_branch_decision(Context, _Decision, Context).
 
@@ -89,13 +89,13 @@ continue_or_stop(NotContinue, _Rest, _Module, Locals, Locals, Stack, Stack, _Mem
     NotContinue \= continue,
     ContextOut = ContextIn.
 
-instruction_limit_reached(analyse(MaxInstructions, CurrentCounter, _Inputs, _BadInputs)) :-
+instruction_limit_reached(analyse(MaxInstructions, CurrentCounter, _Inputs)) :-
     integer(MaxInstructions),
     integer(CurrentCounter),
     CurrentCounter >= MaxInstructions,
     !.
 
-instruction_limit_reached(analyse(MaxInstructions, CurrentCounter, _Inputs, _BadInputs, _PathTrace)) :-
+instruction_limit_reached(analyse(MaxInstructions, CurrentCounter, _Inputs, _PathTrace)) :-
     integer(MaxInstructions),
     integer(CurrentCounter),
     CurrentCounter >= MaxInstructions,
@@ -232,7 +232,7 @@ exec_instruction(drop, _Module, Locals, Locals, [], [], _Memory, invalid, Contex
 exec_instruction(nop, _Module, Locals, Locals, Stack, Stack, _Memory, continue, Context, Context).
 
 exec_instruction(unreachable, _Module, Locals, Locals, Stack, Stack, _Memory, trap, Context, Context) :-
-    Context = analyse(_, _, _, _, _), !.
+    Context = analyse(_, _, _, _), !.
 
 exec_instruction(unreachable, _Module, Locals, Locals, Stack, Stack, _Memory, trap, Context, Context).
 

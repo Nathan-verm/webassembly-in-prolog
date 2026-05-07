@@ -8,18 +8,18 @@
 
 analyse_produces_result(File, MaxInstructions) :-
     parse(File, _Module), !,
-    ContextIn = analyse(MaxInstructions, 0, [], [], []),
-    analyse_file(File, ContextIn, analyse(_, _, _Inputs, _, _), result(_Status, _)), !.
+    ContextIn = analyse(MaxInstructions, 0, [], []),
+    analyse_file(File, ContextIn, analyse(_, _, _Inputs, _), result(_Status, _)), !.
 
 analyse_first_result(File, MaxInstructions, Status-Inputs) :-
     parse(File, _Module), !,
-    ContextIn = analyse(MaxInstructions, 0, [], [], []),
-    analyse_file(File, ContextIn, analyse(_, _, Inputs, _, _), result(Status, _)), !.
+    ContextIn = analyse(MaxInstructions, 0, [], []),
+    analyse_file(File, ContextIn, analyse(_, _, Inputs, _), result(Status, _)), !.
 
 analyse_has_status(File, MaxInstructions, TargetStatus) :-
     parse(File, _Module), !,
-    ContextIn = analyse(MaxInstructions, 0, [], [], []),
-    analyse_file(File, ContextIn, analyse(_, _, _Inputs, _, _), result(Status, _)),
+    ContextIn = analyse(MaxInstructions, 0, [], []),
+    analyse_file(File, ContextIn, analyse(_, _, _Inputs, _), result(Status, _)),
     Status = TargetStatus, !.
 write_test_file(File, Content) :-
     open(File, write, Stream),

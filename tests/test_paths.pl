@@ -8,26 +8,26 @@
 
 paths_produces_result(File, MaxInstructions) :-
     parse(File, _Module), !,
-    ContextIn = analyse(MaxInstructions, 0, [], [], []),
-    analyse_file(File, ContextIn, analyse(_, _, _Inputs, _, _PathTrace), result(_Status, _)), !.
+    ContextIn = analyse(MaxInstructions, 0, [], []),
+    analyse_file(File, ContextIn, analyse(_, _, _Inputs, _PathTrace), result(_Status, _)), !.
 
 paths_first_result(File, MaxInstructions, Status-Inputs) :-
     parse(File, _Module), !,
-    ContextIn = analyse(MaxInstructions, 0, [], [], []),
-    analyse_file(File, ContextIn, analyse(_, _, Inputs, _, _PathTrace), result(Status, _)), !.
+    ContextIn = analyse(MaxInstructions, 0, [], []),
+    analyse_file(File, ContextIn, analyse(_, _, Inputs, _PathTrace), result(Status, _)), !.
 
 paths_has_status(File, MaxInstructions, TargetStatus) :-
     parse(File, _Module), !,
-    ContextIn = analyse(MaxInstructions, 0, [], [], []),
-    analyse_file(File, ContextIn, analyse(_, _, _Inputs, _, _PathTrace), result(Status, _)),
+    ContextIn = analyse(MaxInstructions, 0, [], []),
+    analyse_file(File, ContextIn, analyse(_, _, _Inputs, _PathTrace), result(Status, _)),
     Status = TargetStatus, !.
 
 paths_count_statuses(File, MaxInstructions, Count) :-
     parse(File, _Module), !,
     findall(Status,
         (
-            ContextIn = analyse(MaxInstructions, 0, [], [], []),
-            analyse_file(File, ContextIn, analyse(_, _, _Inputs, _, _PathTrace), result(Status, _))
+            ContextIn = analyse(MaxInstructions, 0, [], []),
+            analyse_file(File, ContextIn, analyse(_, _, _Inputs, _PathTrace), result(Status, _))
         ),
         AllStatuses),
     length(AllStatuses, Count).
