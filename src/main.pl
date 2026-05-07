@@ -1,5 +1,6 @@
 #!/usr/bin/env swipl
 :- use_module(runner).
+:- use_module(parser).
 
 :- discontiguous analyse_dispatch/2.
 
@@ -10,22 +11,27 @@ main :-
 % parsen van argumenten en dispatch van verschillende commandos
 
 dispatch([run, File|_]) :-
+    validate_pwat_file(File),
     !,
     run_dispatch(File).
 
 dispatch([analyse, File, MaxInstructions|_]) :-
+    validate_pwat_file(File),
     !,
     analyse_dispatch(File, MaxInstructions).
 
 dispatch([analyse, File|_]) :-
+    validate_pwat_file(File),
     !,
     analyse_dispatch(File, 1000).
 
 dispatch([paths, File, MaxInstructions|_]) :-
+    validate_pwat_file(File),
     !,
     paths_dispatch(File, MaxInstructions).
 
 dispatch([paths, File|_]) :-
+    validate_pwat_file(File),
     !,
     paths_dispatch(File, 1000).
 
@@ -254,5 +260,15 @@ print_path_results([path_result(Inputs, Status)|Rest]) :-
 strict_prefix(Prefix, Full) :-
     append(Prefix, Suffix, Full),
     Suffix \= [].
+
+
+% Validatie van .pwat bestanden
+validate_pwat_file(File) :-
+    parse(File, _).
+
+validate_pwat_file(File) :-
+    format(user_error, 'ERROR: parsing van ~w mislukt~n', [File]),
+    halt(1).
+
 
 :- initialization(main, main).

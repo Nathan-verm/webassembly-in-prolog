@@ -73,4 +73,30 @@ test(run_exit_invalid_local_get_is_one) :-
     run_cli_exit(['run', TempFile], Status),
     assertion(Status == exit(1)).
 
+
+test(parse_error_exit_is_one) :-
+    TempFile = '/tmp/test_exit_parse_error.pwat',
+    write_test_file(TempFile,
+        '(module
+          (start 0)
+          (func (args 0) (locals 0) (results 1)
+            invalid syntax here
+          )
+        )'),
+    run_cli_exit(['run', TempFile], Status),
+    assertion(Status == exit(1)).
+
+
+test(valid_file_parse_and_run_exit_is_zero) :-
+    TempFile = '/tmp/test_exit_valid_parse.pwat',
+    write_test_file(TempFile,
+        '(module
+          (start 0)
+          (func (args 0) (locals 0) (results 1)
+            i32.const 42
+          )
+        )'),
+    run_cli_exit(['run', TempFile], Status),
+    assertion(Status == exit(0)).
+
 :- end_tests(exit_codes).
