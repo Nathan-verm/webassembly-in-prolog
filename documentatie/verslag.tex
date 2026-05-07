@@ -147,7 +147,7 @@ Het resultaat van de parser is uiteindelijk een Prolog term van de vorm:
 die rechtstreeks gebruikt kan worden door de interpreter en de analyse engine, zonder dat er nog verdere syntactische verwerking nodig is.
 Het voorbeeld voor het hogerlager.pwat bestand kan men in de bijlage vinden.
 
-Om de lezer snel inzicht te geven in de implementatie, volgen hier twee korte en representatieve fragmenten uit \texttt{src/parser.pl} (DCG-regels):
+Om snel inzicht te geven in de implementatie, volgen hier twee korte en representatieve fragmenten uit \texttt{src/parser.pl} (DCG-regels):
 
 \begin{lstlisting}
 % Module
@@ -171,7 +171,9 @@ Foutafhandeling: de parser-predicaat \texttt{parse/2} gebruikt \texttt{once(phra
 
 \section{Werking van de Interpreter (run modus)}
 
-De uitvoering van een programma start in \texttt{run\_file/2}. Na het parsen van het pwat-bestand wordt de bekomen module doorgegeven aan \texttt{run\_module/2}. Daar worden eerst de data-segmenten omgezet naar een geheugenvoorstelling via \texttt{build\_memory/2}. Vervolgens wordt de startfunctie van de module uitgevoerd.
+De uitvoering van een programma start in \texttt{run\_file/2}. Na het parsen van het pwat-bestand wordt de
+bekomen module doorgegeven aan \texttt{run\_module/2}. Daar worden eerst de data-segmenten omgezet naar een
+geheugenvoorstelling via \texttt{build\_memory/2}. Vervolgens wordt de startfunctie van de module uitgevoerd.
 
 De kern van de interpreter zit in het volgende predicaat:
 
@@ -182,32 +184,17 @@ execute_function(Index, Args, Module, Memory, Returns, Status, ContextIn, Contex
     handle_function_signal(Signal, ResultCount, Stack1, Returns, Status).
 \end{verbatim}
 
-De concrete implementatie en verdere predicaten staan in \texttt{src/function\_runner.pl}. De CLI-entry en dispatch-logica staat in \texttt{src/main.pl} en de functies \texttt{run\_file/2} en \texttt{analyse\_file/4} in \texttt{src/runner.pl} zorgen voor het opbouwen van geheugen en het starten van \texttt{execute\_function/8}.
+Dit predicaat geeft de grote lijn van de uitvoering in drie stappen: eerst wordt de functie klaargezet
+(argumenten en locals), daarna worden de instructies uitgevoerd, en op het einde wordt het eindsignaal
+verwerkt om de status en returnwaarden te bepalen.
 
-Traps versus normale returns: wanneer \texttt{exec\_instruction/10} een foutsignaal (\texttt{trap}) teruggeeft, dan wordt dit doorgegeven
-tot \texttt{handle\_function\_signal/5} en resulteert het eindstatus-argument in \texttt{trap} (zie \texttt{src/function\_runner.pl}:
-\texttt{handle\_function\_signal(trap, ..., [], trap)} en \texttt{prepare\_to\_return/6}). Voor ongeldige programma's gebruiken we de status \texttt{invalid}. 
+Wat ook belangrijk is is het signaal-mechanisme: instructies geven signalen door zoals
+\texttt{continue}, \texttt{returned}, \texttt{trap}, \texttt{invalid} of \texttt{break(N)}.
+Die signalen bepalen of de uitvoering doorgaat of stopt. Verderop in deze sectie bespreken we dat stap voor stap.
 
-Bij een normale finish is het eindstatus \texttt{finished} en worden de bovenste returnwaarden van de stack gehaald.
-Fouten in de uitvoering die leiden tot een ongeparste of niet-uitvoerbare module worden door
-\texttt{main.pl} afgevangen en resulteren in een foutmelding op \texttt{stderr} en \texttt{exit(1)}.
-
-De analyse-context en instructielimiet worden hieronder verder toegelicht.
-
-Opmerking over de stack: de startfunctie begint met een lege operand-stack, en elke functie-uitvoering
-krijgt een eigen lege stack. Dit volgt de WebAssembly-semantiek waarbij argumenten van de caller-stack
-worden gepopt bij een \texttt{call} en de returnwaarden nadien terug op de caller-stack geplaatst worden.
-Daardoor is er conceptueel geen globale operand-stack die doorheen alle functies doorloopt, maar de
-zichtbare effecten bij een call zijn identiek aan de specificatie. Ik vermeld dit omdat ik niet zeker wist 
-ofdat dit ok was volgens de opgave. Want de opgave spreekt precies over 1 globale stack, wat ik dus verwarrend vond.
-
-Dit predicaat vormt de volledige levenscyclus van een functie-uitvoering:
-
-\begin{itemize}
-    \item \texttt{setup\_function/6} haalt de juiste functie uit de module, controleert het aantal argumenten en initialiseert de locals.
-    \item \texttt{run\_function/9} start de effectieve uitvoering van de instructies met een lege stack.
-    \item \texttt{handle\_function\_signal/5} verwerkt het eindsignaal en haalt de gevraagde returnwaarden van de stack.
-\end{itemize}
+Ook de stack-werking volgt hetzelfde idee doorheen de hele interpreter: elke functie start met een lege
+operand-stack, waarden worden tijdens de uitvoering gepusht en gepopt, en bij een \texttt{call} gaan argumenten
+van caller naar callee en komen returnwaarden terug naar de caller.
 
 \subsection*{Sequentiële uitvoering van instructies}
 
@@ -294,25 +281,26 @@ Hierdoor kan 'exact' dezelfde interpreter zowel voor effectieve uitvoering als v
 
 \section{Analyse en Paths}
 
-De analyse- en paths-modi hergebruiken exact dezelfde uitvoeringsemantiek als de \texttt{run}-modus, maar met een speciale context-term die extra informatie bijhoudt. In de CLI wordt deze context opgebouwd in \texttt{src/main.pl}:
+De \texttt{analyse} en \texttt{paths} modi gebruiken dezelfde interpreter als de \texttt{run}-modus, maar met een context die extra informatie bijhoudt.
+Die context wordt in \texttt{src/main.pl} aangemaakt:
 \begin{lstlisting}
-% voorbeeld uit main.pl
 ContextIn = analyse(MaxInstructions, 0, [], [], []).
 \end{lstlisting}
 
-De context-term heeft de vorm \texttt{analyse(MaxInstructions, CurrentCounter, Inputs, BadInputs, PathTrace)}. Tijdens uitvoering worden de velden ge"updatet door \texttt{src/function\_runner.pl}:
+De term heeft de vorm \texttt{analyse(MaxInstructions, CurrentCounter, Inputs, BadInputs, PathTrace)}. Tijdens de uitvoering worden velden bijgewerkt door \texttt{src/function\_runner.pl}:
+
 \begin{itemize}
     \item \texttt{increment\_instruction\_counter/2} verhoogt \texttt{CurrentCounter} na elke instructie.
-    \item \texttt{record\_branch\_decision/3} voegt beslissingen toe aan \texttt{PathTrace} zodat de gemaakte branch-keuzes gelogd worden.
+    \item \texttt{record\_branch\_decision/3} voegt beslissingen toe aan \texttt{PathTrace}, zodat we kunnen zien welke takken zijn genomen.
 \end{itemize}
 
-De limiet \texttt{MaxInstructions} voorkomt dat oneindige of extreem lange paden onbeperkt worden onderzocht: zodra \texttt{CurrentCounter} \textgreater= \texttt{MaxInstructions} is, stopt de huidige uitvoering.
+Belangrijk: in analyse-modus worden sommige primitieve functies (bijv. \texttt{read\_int} en \texttt{rand\_int}) als bronnen van meerdere mogelijke waarden behandeld. In plaats van één vaste uitkomst enumereren ze in de analyse meerdere waarden, wat resulteert in meerdere mogelijke uitvoeringspaden. De combinatie van deze niet-deterministische primitieve keuzes en de vastgelegde beslissingen in \texttt{PathTrace} maakt padverkenning mogelijk.
 
-In \texttt{src/main.pl} worden de resultaten van analyse en paths verder gefilterd, bijvoorbeeld met predicaten als \texttt{prefer\_complete\_trap\_paths/2}, \texttt{suppress\_shadowed\_traps/2} en \texttt{keep\_first\_input\_per\_path/2} die zorgen dat we per uitvoeringspad slechts één representatieve input teruggeven.
+Om alle mogelijke paden te verzamelen roept het programma herhaaldelijk de analyse aan en gebruikt \texttt{findall} (via \texttt{collect\_all\_results/3}) om alle \texttt{Status-Inputs-PathTrace} combinaties te verzamelen. Daarna worden deze resultaten gefilterd en gededupliceerd (bijv. met \texttt{prefer\_complete\_trap\_paths/2}, \texttt{prefer\_decision\_paths/2} en \texttt{keep\_first\_input\_per\_path/2}) zodat de output per pad overzichtelijk blijft.
 
-\subsection*{Einde van de functie}
+De limiet \texttt{MaxInstructions} voorkomt dat oneindige paden te lang doorgaan: zodra \texttt{CurrentCounter} \textgreater= \texttt{MaxInstructions} stopt die run.
 
-Wanneer de instructies afgelopen zijn of een \texttt{return} optreedt, worden via \texttt{handle\_function\_signal/5} de gevraagde returnwaarden van de stack gehaald. Indien ergens een \texttt{trap} optreedt, wordt de volledige uitvoering onmiddellijk stopgezet.
+
 
 
 % ----------------------------------------------------
@@ -345,7 +333,7 @@ handmatig als automatisch nagekeken kunnen worden.
 \appendix
 \section{Bijlage}
 
-Voorbeeld internevoorstelling na parsing voor het hogerlage.pwat bestand.
+Voorbeeld internevoorstelling na parsing voor het hogerlager.pwat bestand.
 \begin{lstlisting}
 module(0,
  [data(0,"\71\101\101\102\32\101\101\110\32\103\101\116\97\108\32\105\110\58"),
