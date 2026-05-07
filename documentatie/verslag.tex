@@ -322,6 +322,7 @@ De tests zijn opgedeeld in verschillende delen:
     deling door nul, conditionele traps en lussen met een instructielimiet.
     \item \textbf{Paths-tests}: controleren of voor elk uitvoeringspad minstens 1 geschikte input gevonden wordt, ook wanneer een programma meerdere geneste vertakkingen bevat.
     \item \textbf{CLI-tests}: testen het volledige programma via de command-line interface en controleren of de output exact in het verwachte formaat verschijnt.
+    \item \textbf{Exit-code-tests}: controleren of het programma de juiste exit codes retourneert voor verschillende scenario's. Dit omvat: exit code 0 bij succesvolle uitvoering, exit code 1 voor ongeldig programma's en parsing-fouten, en exit code 2 wanneer een trap optreedt.
 \end{itemize}
 
 Alle tests worden uitgevoerd via een testscript. Voor de meeste gevallen gebruiken we kleine tijdelijke programma's in de test zelf, zodat we per test exact kunnen bepalen
