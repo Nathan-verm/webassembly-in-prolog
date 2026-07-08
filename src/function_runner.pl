@@ -8,30 +8,30 @@ execute_function(Index, Args, Module, Memory, Returns, Status, ContextIn, Contex
     run_function(Instrs, Module, LocalsIn, Memory, Stack1, Signal, ContextIn, ContextOut),
     handle_function_signal(Signal, ResultCount, Stack1, Returns, Status).
 
-% Haalt de functie op en initialiseert locals
+% Fetches the function and initializes locals
 setup_function(Index, Args, Module, LocalsIn, Instrs, ResultCount) :-
     Module = module(_Start, _Data, Funcs),
     nth0(Index, Funcs, func(ArgCount, LocalCount, ResultCount, Instrs)),
     length(Args, ArgCount),
     init_locals(Args, LocalCount, LocalsIn).
 
-% Voert de instructies uit met een lege startstack
+% Executes the instructions with an empty start stack
 run_function(Instrs, Module, LocalsIn, Memory, StackOut, Signal, ContextIn, ContextOut) :-
-    Stack0 = [], % elke functie heeft zijn eigen lege stack om mee te werken omdat args en locals niet via stack worden doorgegeven
+    Stack0 = [], % each function has its own empty stack to work with because args and locals are not passed via stack
     exec_instructions(Instrs, Module, LocalsIn, _Locals, Stack0, StackOut, Memory, Signal, ContextIn, ContextOut).
 
 
-% Verwerkt het eindsignaal van de uitvoering
+% Processes the final signal of the execution
 handle_function_signal(trap, _ResultCount, _Stack, [], trap).
 handle_function_signal(invalid, _ResultCount, _Stack, [], invalid).
 
-% continue => func is finished, dus return
+% continue => func is finished, so return
 handle_function_signal(continue, ResultCount, Stack, Returns, finished) :-
     stack_has_n(Stack, ResultCount),
     take_n(ResultCount, Stack, Returns),
     !.
 
-% niet genoeg waarden op de stack => invalid
+% not enough values on the stack => invalid
 handle_function_signal(continue, _ResultCount, _Stack, [], invalid).
 
 % returned => func is finished
@@ -48,8 +48,8 @@ stack_has_n([_|Rest], N) :-
     stack_has_n(Rest, N1).
 
 
-% TODO dit wordt nooit opgeroepen for some reason
-exec_instructions([], _Module, Locals, Locals, Stack, Stack, _Memory, continue, Context, Context). % geen instructions meer => result = continue
+% TODO this is never called for some reason
+exec_instructions([], _Module, Locals, Locals, Stack, Stack, _Memory, continue, Context, Context). % no more instructions => result = continue
 
 exec_instructions([Instr|Rest], Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal, ContextIn, ContextOut) :-
     exec_instruction(Instr, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, StepSignal, ContextIn, ContextOutExecute),
@@ -64,7 +64,7 @@ increment_instruction_counter(analyse(MaxInstructions, CurrentCounter, Inputs, P
     integer(CurrentCounter),
     IncCurrentCounter is CurrentCounter + 1.
 
-% niets te incrementen in geval van run context
+% nothing to increment in case of run context
 increment_instruction_counter(run, run).
 
 
@@ -74,20 +74,20 @@ record_branch_decision(Context, _Decision, Context).
 
 
 
-% als continue -> voer volgende instructie uit.
-% TODO stop als we meer instructies hebben dan MaxInstructions.
+% if continue -> execute next instruction.
+% TODO stop if we have more instructions than MaxInstructions.
 continue_or_stop(continue, Rest, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal, ContextIn, ContextOut) :-
     ( instruction_limit_reached(ContextIn) ->
         LocalsOut = LocalsIn,
         StackOut = StackIn,
         Signal = continue,
         ContextOut = ContextIn
-        % we voeren geen instructies meer uit hier, dus stoppen
+        % we execute no more instructions here, so stop
     ;
         exec_instructions(Rest, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal, ContextIn, ContextOut)
     ).
 
-% stop als een instructie een instructie een step, return of branch ziet staan. Dan stoppen we hier de uitvoering en geven we deze signal door naar boven.
+% stop if an instruction sees a step, return or branch. Then we stop the execution here and pass this signal up.
 continue_or_stop(NotContinue, _Rest, _Module, Locals, Locals, Stack, Stack, _Memory, NotContinue, ContextIn, ContextOut) :-
     NotContinue \= continue,
     ContextOut = ContextIn.
@@ -98,14 +98,14 @@ instruction_limit_reached(analyse(MaxInstructions, CurrentCounter, _Inputs)) :-
     CurrentCounter >= MaxInstructions,
     !.
 
-% dubbel
+% duplicate
 instruction_limit_reached(analyse(MaxInstructions, CurrentCounter, _Inputs, _PathTrace)) :-
     integer(MaxInstructions),
     integer(CurrentCounter),
     CurrentCounter >= MaxInstructions,
     !.
 
-% nodig voor run context die geen limit hebben
+% needed for run context that have no limit
 instruction_limit_reached(_Context) :-
     fail.
 
@@ -149,11 +149,11 @@ call_internal(Index, Module, StackIn, StackOut, Memory, Signal, ContextIn, Conte
     prepare_to_return(Status, Returns, StackIn, StackRest, StackOut, Signal),
     !.
 
-% check ofdat call kan gemaakt worden, zoniet zet status op invalid
+% check if call can be made, if not set status to invalid
 call_internal(Index, Module, Stack, Stack, _Memory, invalid, Context, Context) :-
     Module = module(_Start, _Data, Funcs),
     ( 
-        \+ nth0(Index, Funcs, _) %check ofdat deze index bestaat
+        \+ nth0(Index, Funcs, _) %check if this index exists
     ;
         nth0(Index, Funcs, func(ArgCount, _Locals, _Results, _Instrs)),
         \+ stack_has_n(Stack, ArgCount)
@@ -161,7 +161,7 @@ call_internal(Index, Module, Stack, Stack, _Memory, invalid, Context, Context) :
 
 call_internal(_Index, _Module, Stack, Stack, _Memory, invalid, Context, Context).
 
-% trap => maakt niet uit wat we doen gewoon, trap teruggeven en stack behouden
+% trap => doesn't matter what we do, just return trap and keep stack
 prepare_to_return(trap, _Returns, StackIn, _StackRest, StackIn, trap).
 prepare_to_return(invalid, _Returns, StackIn, _StackRest, StackIn, invalid).
 
@@ -171,7 +171,7 @@ prepare_to_return(Status, Returns, _StackIn, StackRest, StackOut, continue) :-
 
 
 
-% alle verschillende mogelijke instructies die we moeten ondersteunen:
+% all different possible instructions that we must support:
 
 exec_instruction(i32_const(X), _Module, Locals, Locals, Stack, [X|Stack], _Memory, continue, Context, Context).
 exec_instruction(i32_add, _Module, Locals, Locals, StackIn, StackOut, _Memory, Signal, Context, Context) :-
@@ -181,16 +181,16 @@ exec_instruction(i32_sub, _Module, Locals, Locals, StackIn, StackOut, _Memory, S
 exec_instruction(i32_mul, _Module, Locals, Locals, StackIn, StackOut, _Memory, Signal, Context, Context) :-
     binary_op(StackIn, StackOut, *, Signal).
 
-% deling door nul trap (stack minsten 2 waarden: 0 en A)
+% division by zero trap (stack at least 2 values: 0 and A)
 exec_instruction(i32_div_s, _Module, Locals, Locals, [0, A|Rest], [0, A|Rest], _Memory, trap, Context, Context).
 
-% normale deling
+% normal division
 exec_instruction(i32_div_s, _Module, Locals, Locals, [B, A|Rest], [Q|Rest], _Memory, continue, Context, Context) :-
-    B =\= 0, % zou normaal niet mogen voorkomen met predicaat hierboven
+    B =\= 0, % should normally not occur with predicate above
     Q is A // B,
     !.
 
-% geval dat stack minder dan 2 waarden heeft => trap
+% case that stack has fewer than 2 values => trap
 exec_instruction(i32_div_s, _Module, Locals, Locals, Stack, Stack, _Memory, invalid, Context, Context).
 
 
@@ -221,7 +221,7 @@ exec_instruction(i32_or, _Module, Locals, Locals, StackIn, StackOut, _Memory, Si
 exec_instruction(i32_xor, _Module, Locals, Locals, StackIn, StackOut, _Memory, Signal, Context, Context) :-
     binary_op(StackIn, StackOut, i32_xor, Signal).
 
-% i32_eqz is unair: pop 1 waarde, push 1 of 0
+% i32_eqz is unary: pop 1 value, push 1 or 0
 exec_instruction(i32_eqz, _Module, Locals, Locals, [A|Rest], [R|Rest], _Memory, continue, Context, Context) :-
     number(A),
     ( A =:= 0 -> R = 1 ; R = 0 ),
@@ -245,7 +245,7 @@ exec_instruction(unreachable, _Module, Locals, Locals, Stack, Stack, _Memory, tr
 
 exec_instruction(local_get(N), _Module, Locals, Locals, Stack, [Value|Stack], _Memory, continue, Context, Context) :-
     nth0(N, Locals, Value), !.
-% geen n'de local gevonden => trap
+% no n'th local found => trap
 exec_instruction(local_get(_N), _Module, Locals, Locals, Stack, Stack, _Memory, invalid, Context, Context).
 
 
@@ -254,29 +254,29 @@ exec_instruction(local_set(N), _Module, LocalsIn, LocalsOut, [Value|Stack], Stac
 exec_instruction(local_set(_N), _Module, Locals, Locals, Stack, Stack, _Memory, invalid, Context, Context).
 
 
-%same als local_set maar dan met ongewijzigde stack
+%same as local_set but with unmodified stack
 exec_instruction(local_tee(N), _Module, LocalsIn, LocalsOut, [Value|Stack], [Value|Stack], _Memory, continue, Context, Context) :- % exec_instruction(local_tee(N), _Module, LocalsIn, LocalsOut, [Value|Stack], [Value|Stack], _Memory, continue) :- exec_instruction(local_set(N), _Module, LocalsIn, LocalsOut, [Value, Value|Stack], Stack, _Memory, continue).
     set_nth0(LocalsIn, N, Value, LocalsOut), !.
 
 exec_instruction(local_tee(_N), _Module, Locals, Locals, Stack, Stack, _Memory, invalid, Context, Context).
 
 
-% interne functie aanroepen (via index)
+% internal function call (via index)
 exec_instruction(call(Target), Module, Locals, Locals, StackIn, StackOut, Memory, Signal, ContextIn, ContextOut) :-
-    integer(Target), !, % check ofdat het integer is => interne functie call
+    integer(Target), !, % check if it is integer => internal function call
     call_internal(Target, Module, StackIn, StackOut, Memory, Signal, ContextIn, ContextOut).
 
-% primitieve functie aanroepen (via naam: print, read_int...)
+% primitive function call (via name: print, read_int...)
 exec_instruction(call(Target), _Module, Locals, Locals, StackIn, StackOut, Memory, Signal, ContextIn, ContextOut) :-
-    atom(Target), !, % check ofdat atom (print...) voor 'ingebouwde' functie oproep
+    atom(Target), !, % check if atom (print...) for 'built-in' function call
     call_primitive(Target, StackIn, Memory, StackOut, Signal, ContextIn, ContextOut).
 
-% ongeldige target → trap
+% invalid target → trap
 exec_instruction(call(_Target), _Module, Locals, Locals, Stack, Stack, _Memory, invalid, Context, Context).
 
 exec_instruction(return, _Module, Locals, Locals, Stack, Stack, _Memory, returned, Context, Context).
 
-% we gaan in een block, dus we moeten apart het signaal verwerken => break 1 geeft dan break 0 terug etc
+% we go into a block, so we must process the signal separately => break 1 then gives break 0 back etc
 exec_instruction(block(Instructions), Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal, ContextIn, ContextOut) :-
     exec_instructions(Instructions, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal, ContextIn, ContextOut),
     handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal).
@@ -290,13 +290,13 @@ exec_instruction(br(Value), _Module, Locals, Locals, Stack, Stack, _Memory, brea
 exec_instruction(br(_Value), _Module, Locals, Locals, Stack, Stack, _Memory, invalid, Context, Context).
 
 
-% Conditie is onwaar (0) => voer FalseBlock uit
+% Condition is false (0) => execute FalseBlock
 exec_instruction(if(_TrueBlock, FalseBlock), Module, LocalsIn, LocalsOut, [0|StackIn], StackOut, Memory, Signal, ContextIn, ContextOut) :-
     record_branch_decision(ContextIn, if_false, ContextWithDecision),
     exec_instructions(FalseBlock, Module, LocalsIn, Locals1, StackIn, Stack1, Memory, InnerSignal, ContextWithDecision, ContextOut),
     handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal).
 
-% Conditie is waar (niet 0) => voer TrueBlock uit
+% Condition is true (not 0) => execute TrueBlock
 exec_instruction(if(TrueBlock, _FalseBlock), Module, LocalsIn, LocalsOut, [Cond|StackIn], StackOut, Memory, Signal, ContextIn, ContextOut) :-
     number(Cond),
     Cond =\= 0,
@@ -305,7 +305,7 @@ exec_instruction(if(TrueBlock, _FalseBlock), Module, LocalsIn, LocalsOut, [Cond|
     handle_block_signal(InnerSignal, Locals1, Stack1, LocalsOut, StackOut, Signal).
 
 
-% Lege stack => trap
+% Empty stack => trap
 exec_instruction(if(_TrueBlock, _FalseBlock), _Module, Locals, Locals, [], [], _Memory, invalid, Context, Context).
 exec_instruction(if(_TrueBlock, _FalseBlock), _Module, Locals, Locals, [Cond|Stack], [Cond|Stack], _Memory, invalid, Context, Context) :-
     \+ number(Cond).
@@ -317,13 +317,13 @@ exec_instruction(br_if(Value), _Module, Locals, Locals, [Cond|Stack], Stack, _Me
     Cond =\= 0,
     record_branch_decision(ContextIn, br_if_true(Value), ContextOut).
 
-% conditie is onwaar (0) => continue
+% condition is false (0) => continue
 exec_instruction(br_if(Value), _Module, Locals, Locals, [0|Stack], Stack, _Memory, continue, ContextIn, ContextOut) :-
     integer(Value),
     Value >= 0,
     record_branch_decision(ContextIn, br_if_false(Value), ContextOut).
 
-% ongeldige waarde => trap
+% invalid value => trap
 exec_instruction(br_if(Value), _Module, Locals, Locals, [Cond|Stack], [Cond|Stack], _Memory, invalid, Context, Context) :-
     ( \+ integer(Value)
     ; Value < 0
@@ -336,7 +336,7 @@ exec_instruction(loop(Instructions), Module, LocalsIn, LocalsOut, StackIn, Stack
     run_loop(Instructions, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal, ContextIn, ContextOut).
 
 
-% normaal niet voorkomen omdat parser al zou moeten falen, maar voor zekerheid
+% normally not occurring because parser should already fail, but for safety
 exec_instruction(Unsupported, _Module, Locals, Locals, Stack, Stack, _Memory, invalid, Context, Context) :-
     \+ supported_instruction(Unsupported).
 

@@ -2,7 +2,6 @@
 
 `plwasm` is a small interpreter and static-analysis tool for a **simplified
 subset of WebAssembly**, written in [SWI-Prolog](https://www.swi-prolog.org/).
-It was built as the project for the "Logisch Programmeren" course.
 
 WebAssembly is a stack-based language: every instruction pops values from the
 stack and pushes new ones. `plwasm` reads programs written in a textual
@@ -20,23 +19,24 @@ conditions is used to explore the program's execution tree.
 
 ## Table of contents
 
-- [Prerequisites](#prerequisites)
-- [Quick start](#quick-start)
-- [The three modes](#the-three-modes)
-  - [run](#run)
-  - [analyse](#analyse)
-  - [paths](#paths)
-  - [Exit codes](#exit-codes)
-- [The `.pwat` file format](#the-pwat-file-format)
-  - [Module structure](#module-structure)
-  - [Supported instructions](#supported-instructions)
-  - [Primitives](#primitives)
-- [Examples](#examples)
-- [Project layout](#project-layout)
-- [Architecture](#architecture)
-- [Testing](#testing)
-- [Running with Docker](#running-with-docker)
-- [Documentation](#documentation)
+- [plwasm — WebAssembly analysis tool in Prolog](#plwasm--webassembly-analysis-tool-in-prolog)
+  - [Table of contents](#table-of-contents)
+  - [Prerequisites](#prerequisites)
+  - [Quick start](#quick-start)
+  - [The three modes](#the-three-modes)
+    - [run](#run)
+    - [analyse](#analyse)
+    - [paths](#paths)
+    - [Exit codes](#exit-codes)
+  - [The `.pwat` file format](#the-pwat-file-format)
+    - [Module structure](#module-structure)
+    - [Supported instructions](#supported-instructions)
+    - [Primitives](#primitives)
+  - [Examples](#examples)
+  - [Project layout](#project-layout)
+  - [Architecture](#architecture)
+  - [Testing](#testing)
+  - [Documentation](#documentation)
 
 ## Prerequisites
 
@@ -324,27 +324,9 @@ Or run a single suite, e.g.:
 swipl -q -s tests/test_run.pl -g run_tests -t halt
 ```
 
-A subset of these tests is also run automatically on push via the
-`.github/workflows/classroom.yml` GitHub Classroom autograding workflow.
-
-## Running with Docker
-
-For a clean-room environment matching the autograder, the repository references
-the image `masteeve/logprog-2526`. The `docker-test.sh` helper mounts the
-project into the container:
-
-```bash
-./docker-test.sh        # interactive shell inside the container
-# or, equivalently:
-docker run -it -v "$PWD:/project" masteeve/logprog-2526
-```
-
-Inside the container `swipl` is already available, so you can run `./plwasm`
-or the test scripts directly.
-
 ## Documentation
 
 A more detailed (Dutch) report describing the design decisions, the
 interpreter semantics and the analysis strategy is available in
-[`documentatie/verslag.pdf`](documentatie/verslag.pdf) (source:
-`documentatie/verslag.tex`).
+[`documentation/verslag.pdf`](documentatie/verslag.pdf) (source:
+`documentation/verslag.tex`).

@@ -10,7 +10,7 @@
 % Entry point
 parse(File, Module) :-
     read_file_to_string(File, String, []),
-    string_codes(String, Codes), % convert naar een lijst van ascii chars
+    string_codes(String, Codes), % convert to a list of ascii chars
     once(phrase(module(Module), Codes)).
 
 
@@ -28,9 +28,9 @@ comment_chars --> [].
 
 % Module
 
-% Start => integer dat zegt welke functie eerst opgeroepen moet worden
-% Data is een lijst van data(Address, str) waarbij str de rauwe strings zijn "\12\44\222" etc
-% Funcs zijn een lijst van functies
+% Start => integer that says which function should be called first
+% Data is a list of data(Address, str) where str are the raw strings "\12\44\222" etc
+% Funcs are a list of functions
 module(module(Start, Data, Funcs)) -->
     ws, "(", "module", ws,
     start(Start),
@@ -55,7 +55,7 @@ data_segment(data(Address, Str)) -->
 functions([F|T]) --> function(F), functions(T).
 functions([]) --> [].
 
-% aantal args, aantal locals, aantal resultaten, en lijst van instructies in die functie
+% number of args, number of locals, number of results, and list of instructions in that function
 function(func(Args, Locals, Results, Instrs)) -->
     "(", "func", ws,
     args(Args),
@@ -109,7 +109,7 @@ instruction(block(Instrs)) --> "block", ws, block_instructions(Instrs), "end", w
 instruction(loop(Instrs)) --> "loop", ws, block_instructions(Instrs), "end", ws.
 instruction(if(TrueBlock, FalseBlock)) -->
     "if", ws, block_instructions(TrueBlock),
-    ( "else", ws, block_instructions(FalseBlock) ; { FalseBlock = [] } ), % de ; operator is de of operator, we testen dus op een else tak, als die er niet is dan zeggen we gewoon lege else
+    ( "else", ws, block_instructions(FalseBlock) ; { FalseBlock = [] } ), % the ; operator is the or operator, so we test for an else branch, if there is none we just say empty else
     "end", ws.
 
 % Nested blocks
@@ -131,21 +131,21 @@ instruction(unreachable) --> "unreachable", ws.
 
 integer(N) --> optional_sign(Sign), digits(Ds), { append(Sign, Ds, AllCodes), number_codes(N, AllCodes) }.
 
-optional_sign([45]) --> [45], !.  % 45 is ASCII voor '-'
+optional_sign([45]) --> [45], !.  % 45 is ASCII for '-'
 optional_sign([]) --> [].
 
-% minstens 1 digit
-digits([D|T]) --> [D], { char_type(D,digit) }, digits_rest(T). % {} voert gewoon prolog code uit maar consumed geen chars
-% nul of meer digits nadien
+% at least 1 digit
+digits([D|T]) --> [D], { char_type(D,digit) }, digits_rest(T). % {} just executes prolog code but consumes no chars
+% zero or more digits afterwards
 digits_rest([D|T]) --> [D], { char_type(D,digit) }, digits_rest(T).
 digits_rest([]) --> [].
 
 
 % Strings
 
-% Bewaar de inhoud tussen quotes letterlijk als string, zonder escape-conversie.
+% Store the content between quotes literally as string, without escape conversion.
 string_literal(Str) -->
-    [34], % is ascii voor "
+    [34], % is ascii for "
     raw_string_codes(Codes),
     [34],
     { string_codes(Str, Codes) }.

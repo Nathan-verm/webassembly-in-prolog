@@ -8,7 +8,7 @@ main :-
     current_prolog_flag(argv, Argv),
     dispatch(Argv).
 
-% parsen van argumenten en dispatch van verschillende commandos
+% parsing of arguments and dispatch of different commands
 
 dispatch([run, File|_]) :-
     validate_pwat_file(File),
@@ -55,7 +55,7 @@ run_dispatch(File) :-
     halt_for_run_status(Status).
 
 run_dispatch(File) :-
-    format(user_error, 'ERROR: uitvoering van ~w mislukt~n', [File]),
+    format(user_error, 'ERROR: execution of ~w failed~n', [File]),
     halt(1).
 
 print_run_result(Status, Returns) :-
@@ -65,7 +65,7 @@ print_run_result(Status, Returns) :-
 halt_for_run_status(trap) :-
     halt(2).
 halt_for_run_status(invalid) :-
-    format(user_error, 'ERROR: ongeldig programma~n', []),
+    format(user_error, 'ERROR: invalid program~n', []),
     halt(1).
 halt_for_run_status(finished).
 
@@ -75,17 +75,17 @@ halt_for_run_status(finished).
 analyse_dispatch(File, MaxInstructionsRaw) :-
     parse_max_instructions(MaxInstructionsRaw, MaxInstructions),
     !,
-    collect_all_results(File, MaxInstructions, AllResults), % voer de file uit en krijg alle mogelijke traces (wordt zowel gebruikt door analyse als paths) Allresults: Status - Inputs - PathTrace
-    abort_if_invalid(AllResults), % als ergens een pad naar een invalid uitvoering leidt => stop analsye met exit code 1
-    collect_trap_candidates(AllResults, TrapCandidates), % houd enkel traces over die leiden tot een trap
-    collect_finished_path_traces(AllResults, FinishedPathTraces), % houd enkel traces over die volledig uitgevoerd zijn
-    filter_trap_candidates(FinishedPathTraces, TrapCandidates, FilteredCandidates), % voor analyse willen we enkel paden die resulteren in een trap
-    sort_and_deduplicate_traps(FilteredCandidates, UniqueInputs), % er zijn veel duplicate traces, in de output willen we voor elk maar 1 (en sorteer) 
+    collect_all_results(File, MaxInstructions, AllResults), % execute the file and get all possible traces (used by both analyse and paths) AllResults: Status - Inputs - PathTrace
+    abort_if_invalid(AllResults), % if somewhere a path leads to an invalid execution => stop analyse with exit code 1
+    collect_trap_candidates(AllResults, TrapCandidates), % keep only traces that lead to a trap
+    collect_finished_path_traces(AllResults, FinishedPathTraces), % keep only traces that are fully executed
+    filter_trap_candidates(FinishedPathTraces, TrapCandidates, FilteredCandidates), % for analyse we only want paths that result in a trap
+    sort_and_deduplicate_traps(FilteredCandidates, UniqueInputs), % there are many duplicate traces, in the output we want only 1 for each (and sort) 
     print_trap_paths(UniqueInputs).
 
 
 analyse_dispatch(_File, MaxInstructionsRaw) :-
-    format(user_error, 'ERROR: max_instructions moet een positief geheel getal zijn, kreeg: ~w~n', [MaxInstructionsRaw]),
+    format(user_error, 'ERROR: max_instructions must be a positive integer, got: ~w~n', [MaxInstructionsRaw]),
     halt(1).
 
 
@@ -114,7 +114,7 @@ filter_trap_candidates(_FinishedPathTraces, TrapCandidates, FilteredCandidates) 
 
 sort_and_deduplicate_traps(Candidates, UniqueInputs) :-
     maplist(trap_candidate_to_sort_pair, Candidates, Pairs),
-    keysort(Pairs, SortedPairs), % ingebakke predicaat die sorteerd lexicografisch
+    keysort(Pairs, SortedPairs), % built-in predicate that sorts lexicographically
     maplist(sort_pair_to_trap_candidate, SortedPairs, Sorted),
     keep_first_input_per_path(Sorted, UniqueInputs).
 
@@ -129,12 +129,12 @@ paths_dispatch(File, MaxInstructionsRaw) :-
     !,
     collect_all_results(File, MaxInstructions, AllResults),
     abort_if_invalid(AllResults),
-    collect_path_candidates(AllResults, RawCandidates), % zet AllResults (Status-Inputs-PathTraceRev) om naar path_candidate(PathTrace, Status, Path)
+    collect_path_candidates(AllResults, RawCandidates), % convert AllResults (Status-Inputs-PathTraceRev) to path_candidate(PathTrace, Status, Path)
     sort_and_deduplicate_paths(RawCandidates, UniqueResults),
     print_path_results(UniqueResults).
 
 paths_dispatch(_File, MaxInstructionsRaw) :-
-    format(user_error, 'ERROR: max_instructions moet een positief geheel getal zijn, kreeg: ~w~n', [MaxInstructionsRaw]),
+    format(user_error, 'ERROR: max_instructions must be a positive integer, got: ~w~n', [MaxInstructionsRaw]),
     halt(1).
 
 collect_path_candidates(AllResults, Candidates) :-
@@ -149,10 +149,10 @@ convert_path_to_candidate(Status-Inputs-PathTraceRev, path_candidate(PathTrace, 
 
 
 sort_and_deduplicate_paths(Candidates, UniqueResults) :-
-    maplist(path_candidate_to_sort_pair, Candidates, Pairs), % omzetten om te kunnen sorteren
-    keysort(Pairs, SortedPairs),  % sorteren
-    maplist(sort_pair_to_path_candidate, SortedPairs, Sorted), % terug naar originele vorm
-    keep_first_result_per_key(Sorted, UniqueResults). % enkel eerste result overhouden
+    maplist(path_candidate_to_sort_pair, Candidates, Pairs), % convert to be able to sort
+    keysort(Pairs, SortedPairs),  % sorting
+    maplist(sort_pair_to_path_candidate, SortedPairs, Sorted), % back to original form
+    keep_first_result_per_key(Sorted, UniqueResults). % keep only first result
 
 path_candidate_to_sort_pair(path_candidate(PathTrace, Status, Inputs), key(PathTrace, Status)-path_candidate(PathTrace, Status, Inputs)).
 sort_pair_to_path_candidate(_-Candidate, Candidate).
@@ -173,17 +173,17 @@ run_analysis(File, MaxInstructions, Status, Inputs, PathTrace) :-
     analyse_file(File, ContextIn, analyse(_, _, Inputs, PathTrace), result(Status, _Returns)).
 
 
-% check ofdat er een invalid entry is in AllResults
+% check if there is an invalid entry in AllResults
 abort_if_invalid(AllResults) :-
     member(invalid-_-_, AllResults),
     !,
-    format(user_error, 'ERROR: ongeldig programma~n', []),
+    format(user_error, 'ERROR: invalid program~n', []),
     halt(1).
 
 abort_if_invalid(_).
 
 
-% deze en de volgende predicaat regel doen eigenlijk dubbel werk
+% this and the following predicate rule basically do double work
 parse_max_instructions(MaxInstructionsRaw, MaxInstructions) :-
     integer(MaxInstructionsRaw),
     MaxInstructions = MaxInstructionsRaw,
@@ -192,12 +192,12 @@ parse_max_instructions(MaxInstructionsRaw, MaxInstructions) :-
 parse_max_instructions(MaxInstructionsRaw, MaxInstructions) :-
     \+ integer(MaxInstructionsRaw),
 
-    % dit doet dus: probeer omzetting van atom naar getal, als dat faalt dan fail.
-    catch(atom_number(MaxInstructionsRaw, MaxInstructions), _, fail), % catch doet: catch(Goal, Error, Handler) => als goal faalt doe dan Handler
+    % this does: try conversion of atom to number, if that fails then fail.
+    catch(atom_number(MaxInstructionsRaw, MaxInstructions), _, fail), % catch does: catch(Goal, Error, Handler) => if goal fails then do Handler
     integer(MaxInstructions),
     MaxInstructions > 0.
 
-% filteren van traps
+% filtering of traps
 
 prefer_complete_trap_paths(TrapCandidates, CompleteTrapCandidates) :-
     exclude(has_longer_trap_extension(TrapCandidates), TrapCandidates, CompleteTrapCandidates).
@@ -206,13 +206,13 @@ has_longer_trap_extension(TrapCandidates, trap_candidate(Path, _)) :-
     member(trap_candidate(OtherPath, _), TrapCandidates),
     strict_prefix(Path, OtherPath).
 
-% als er een pad is met decision: gooi de niet decision paden weg
+% if there is a path with decision: throw away the non-decision paths
 prefer_decision_paths(TrapCandidates, FilteredTrapCandidates) :-
     has_non_empty_trap_path(TrapCandidates),
     !,
     exclude(is_empty_trap_candidate, TrapCandidates, FilteredTrapCandidates).
 
-% enkel niet decision paden => houd ze allemaal
+% only non-decision paths => keep them all
 prefer_decision_paths(TrapCandidates, TrapCandidates).
 
 
@@ -224,13 +224,13 @@ has_non_empty_trap_path([_|Rest]) :-
 
 is_empty_trap_candidate(trap_candidate([], _)).
 
-% verwijder duplicates
+% remove duplicates
 
-% stel de path is [taken, taken], dan nemen we enkel de eerste inputs die heraan voldoen
+% suppose the path is [taken, taken], then we take only the first inputs that satisfy this
 keep_first_input_per_path([], []).
 keep_first_input_per_path([trap_candidate(Path, Inputs)|Rest], [Inputs|Out]) :-
-    skip_same_trap_path(Path, Rest, Remaining), % houd 1 path over met bijhorden inputs
-    keep_first_input_per_path(Remaining, Out). % doe dit recursief voor de andere paths
+    skip_same_trap_path(Path, Rest, Remaining), % keep 1 path with corresponding inputs
+    keep_first_input_per_path(Remaining, Out). % do this recursively for the other paths
 
 skip_same_trap_path(_Path, [], []).
 skip_same_trap_path(Path, [trap_candidate(Path, _)|Rest], Remaining) :-
@@ -238,7 +238,7 @@ skip_same_trap_path(Path, [trap_candidate(Path, _)|Rest], Remaining) :-
     skip_same_trap_path(Path, Rest, Remaining).
 skip_same_trap_path(_Path, Rest, Rest).
 
-% houd maar 1 combinatie van PathTrace en Status over per Pathtracen en status
+% keep only 1 combination of PathTrace and Status per PathTrace and status
 keep_first_result_per_key([], []).
 keep_first_result_per_key([path_candidate(PathTrace, Status, Inputs)|Rest], [path_result(Inputs, Status)|Out]) :-
     Key = key(PathTrace, Status),
@@ -251,8 +251,8 @@ skip_same_path_key(Key, [path_candidate(PathTrace, Status, _)|Rest], Remaining) 
     !,
     skip_same_path_key(Key, Rest, Remaining).
 
-% geen exacte match => behouden en stoppen
-% dit werkt omdat alles 'gesorteerd' is
+% no exact match => keep and stop
+% this works because everything is 'sorted'
 skip_same_path_key(_Key, Rest, Rest).
 
 
@@ -274,12 +274,12 @@ strict_prefix(Prefix, Full) :-
     Suffix \= [].
 
 
-% Validatie van .pwat bestanden
+% Validation of .pwat files
 validate_pwat_file(File) :-
     parse(File, _).
 
 validate_pwat_file(File) :-
-    format(user_error, 'ERROR: parsing van ~w mislukt~n', [File]),
+    format(user_error, 'ERROR: parsing of ~w failed~n', [File]),
     halt(1).
 
 

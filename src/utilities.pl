@@ -29,7 +29,7 @@ zeros(N, [0|T]) :-
     N1 is N - 1,
     zeros(N1, T).
 
-% zet locals op 0
+% set locals to 0
 init_locals(Args, LocalCount, Locals) :-
     zeros(LocalCount, ZeroLocals),
     append(Args, ZeroLocals, Locals).
@@ -38,7 +38,7 @@ init_locals(Args, LocalCount, Locals) :-
 binary_op([B, A|Rest], [R|Rest], Op, continue) :-
     eval_binop(Op, A, B, R), !.
 
-binary_op(Stack, Stack, _Op, invalid). % stack te klein => ongeldig programma
+binary_op(Stack, Stack, _Op, invalid). % stack too small => invalid program
 
 eval_binop(+, A, B, R) :- R is A + B.
 eval_binop(-, A, B, R) :- R is A - B.

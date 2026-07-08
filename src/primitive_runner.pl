@@ -26,7 +26,7 @@ call_primitive(Name, Stack, _Memory, Stack, invalid, Context, Context) :-
 handle_primitive_result(trap, _Returns, StackIn, _StackRest, StackIn, trap).
 handle_primitive_result(invalid, _Returns, StackIn, _StackRest, StackIn, invalid).
 
-% if succes => continue
+% if success => continue
 handle_primitive_result(continue, Returns, _StackIn, StackRest, StackOut, continue) :-
     append_rev(Returns, StackRest, StackOut).
 
@@ -44,12 +44,12 @@ primitive_arity(println, 2).
 
 % run_primitive(InstructionName, ArgsList, Memory, ReturnList, Status) status => finished, continue, trap
 
-% if context is run => gewoon printen
+% if context is run => just print
 run_primitive(print, [Address, Length], Memory, [], continue, run, run) :-
     memory_slice(Memory, Address, Length, Codes),
     format('~s', [Codes]), !.
 
-% als context analyse is => niet printen
+% if context is analyse => don't print
 run_primitive(print, [_Address, _Length], _Memory, [], continue, analyse(_, _, _, _), _).
 
 run_primitive(println, Args, Memory, [], continue, run, run) :-
@@ -70,7 +70,7 @@ run_primitive(print_int, _, _Memory, [], continue, analyse(_, _, _, _), analyse(
 run_primitive(read_int, [Min, Max], _Memory, [Value], continue, run, run) :-
     read_int_between(Min, Max, Value), !.
 
-% hier is de clue van analyse functie
+% here is the clue of the analyse function
 run_primitive(read_int, [Min, Max], _Memory, [Value], continue, analyse(MaxInstructionsIn, CounterIn, InputsIn, PathTrace), analyse(MaxInstructionsIn, CounterIn, InputsOut, PathTrace)) :-
     Lower is Min + 1,
     Upper is Max - 1,
