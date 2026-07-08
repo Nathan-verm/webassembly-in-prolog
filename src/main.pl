@@ -75,7 +75,7 @@ halt_for_run_status(finished).
 analyse_dispatch(File, MaxInstructionsRaw) :-
     parse_max_instructions(MaxInstructionsRaw, MaxInstructions),
     !,
-    collect_all_results(File, MaxInstructions, AllResults), % voer de file uit en krijg alle mogelijke traces (wordt zowel gebruikt door analyse als paths)
+    collect_all_results(File, MaxInstructions, AllResults), % voer de file uit en krijg alle mogelijke traces (wordt zowel gebruikt door analyse als paths) Allresults: Status - Inputs - PathTrace
     abort_if_invalid(AllResults), % als ergens een pad naar een invalid uitvoering leidt => stop analsye met exit code 1
     collect_trap_candidates(AllResults, TrapCandidates), % houd enkel traces over die leiden tot een trap
     collect_finished_path_traces(AllResults, FinishedPathTraces), % houd enkel traces over die volledig uitgevoerd zijn
@@ -114,7 +114,7 @@ filter_trap_candidates(_FinishedPathTraces, TrapCandidates, FilteredCandidates) 
 
 sort_and_deduplicate_traps(Candidates, UniqueInputs) :-
     maplist(trap_candidate_to_sort_pair, Candidates, Pairs),
-    keysort(Pairs, SortedPairs),
+    keysort(Pairs, SortedPairs), % ingebakke predicaat die sorteerd lexicografisch
     maplist(sort_pair_to_trap_candidate, SortedPairs, Sorted),
     keep_first_input_per_path(Sorted, UniqueInputs).
 
@@ -149,10 +149,10 @@ convert_path_to_candidate(Status-Inputs-PathTraceRev, path_candidate(PathTrace, 
 
 
 sort_and_deduplicate_paths(Candidates, UniqueResults) :-
-    maplist(path_candidate_to_sort_pair, Candidates, Pairs),
-    keysort(Pairs, SortedPairs),
-    maplist(sort_pair_to_path_candidate, SortedPairs, Sorted),
-    keep_first_result_per_key(Sorted, UniqueResults).
+    maplist(path_candidate_to_sort_pair, Candidates, Pairs), % omzetten om te kunnen sorteren
+    keysort(Pairs, SortedPairs),  % sorteren
+    maplist(sort_pair_to_path_candidate, SortedPairs, Sorted), % terug naar originele vorm
+    keep_first_result_per_key(Sorted, UniqueResults). % enkel eerste result overhouden
 
 path_candidate_to_sort_pair(path_candidate(PathTrace, Status, Inputs), key(PathTrace, Status)-path_candidate(PathTrace, Status, Inputs)).
 sort_pair_to_path_candidate(_-Candidate, Candidate).
@@ -182,6 +182,8 @@ abort_if_invalid(AllResults) :-
 
 abort_if_invalid(_).
 
+
+% deze en de volgende predicaat regel doen eigenlijk dubbel werk
 parse_max_instructions(MaxInstructionsRaw, MaxInstructions) :-
     integer(MaxInstructionsRaw),
     MaxInstructions = MaxInstructionsRaw,
@@ -189,7 +191,9 @@ parse_max_instructions(MaxInstructionsRaw, MaxInstructions) :-
 
 parse_max_instructions(MaxInstructionsRaw, MaxInstructions) :-
     \+ integer(MaxInstructionsRaw),
-    catch(atom_number(MaxInstructionsRaw, MaxInstructions), _, fail),
+
+    % dit doet dus: probeer omzetting van atom naar getal, als dat faalt dan fail.
+    catch(atom_number(MaxInstructionsRaw, MaxInstructions), _, fail), % catch doet: catch(Goal, Error, Handler) => als goal faalt doe dan Handler
     integer(MaxInstructions),
     MaxInstructions > 0.
 
@@ -202,10 +206,13 @@ has_longer_trap_extension(TrapCandidates, trap_candidate(Path, _)) :-
     member(trap_candidate(OtherPath, _), TrapCandidates),
     strict_prefix(Path, OtherPath).
 
+% als er een pad is met decision: gooi de niet decision paden weg
 prefer_decision_paths(TrapCandidates, FilteredTrapCandidates) :-
     has_non_empty_trap_path(TrapCandidates),
     !,
     exclude(is_empty_trap_candidate, TrapCandidates, FilteredTrapCandidates).
+
+% enkel niet decision paden => houd ze allemaal
 prefer_decision_paths(TrapCandidates, TrapCandidates).
 
 
@@ -219,10 +226,11 @@ is_empty_trap_candidate(trap_candidate([], _)).
 
 % verwijder duplicates
 
+% stel de path is [taken, taken], dan nemen we enkel de eerste inputs die heraan voldoen
 keep_first_input_per_path([], []).
 keep_first_input_per_path([trap_candidate(Path, Inputs)|Rest], [Inputs|Out]) :-
-    skip_same_trap_path(Path, Rest, Remaining),
-    keep_first_input_per_path(Remaining, Out).
+    skip_same_trap_path(Path, Rest, Remaining), % houd 1 path over met bijhorden inputs
+    keep_first_input_per_path(Remaining, Out). % doe dit recursief voor de andere paths
 
 skip_same_trap_path(_Path, [], []).
 skip_same_trap_path(Path, [trap_candidate(Path, _)|Rest], Remaining) :-
@@ -230,6 +238,7 @@ skip_same_trap_path(Path, [trap_candidate(Path, _)|Rest], Remaining) :-
     skip_same_trap_path(Path, Rest, Remaining).
 skip_same_trap_path(_Path, Rest, Rest).
 
+% houd maar 1 combinatie van PathTrace en Status over per Pathtracen en status
 keep_first_result_per_key([], []).
 keep_first_result_per_key([path_candidate(PathTrace, Status, Inputs)|Rest], [path_result(Inputs, Status)|Out]) :-
     Key = key(PathTrace, Status),
@@ -241,6 +250,9 @@ skip_same_path_key(Key, [path_candidate(PathTrace, Status, _)|Rest], Remaining) 
     Key = key(PathTrace, Status),
     !,
     skip_same_path_key(Key, Rest, Remaining).
+
+% geen exacte match => behouden en stoppen
+% dit werkt omdat alles 'gesorteerd' is
 skip_same_path_key(_Key, Rest, Rest).
 
 

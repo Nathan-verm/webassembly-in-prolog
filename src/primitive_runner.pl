@@ -52,7 +52,6 @@ run_primitive(print, [Address, Length], Memory, [], continue, run, run) :-
 % als context analyse is => niet printen
 run_primitive(print, [_Address, _Length], _Memory, [], continue, analyse(_, _, _, _), _).
 
-
 run_primitive(println, Args, Memory, [], continue, run, run) :-
     run_primitive(print, Args, Memory, [], continue, run, run),
     writeln(""), !.

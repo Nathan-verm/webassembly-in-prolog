@@ -10,7 +10,7 @@
 % Entry point
 parse(File, Module) :-
     read_file_to_string(File, String, []),
-    string_codes(String, Codes),
+    string_codes(String, Codes), % convert naar een lijst van ascii chars
     once(phrase(module(Module), Codes)).
 
 
@@ -27,6 +27,10 @@ comment_chars --> [].
 
 
 % Module
+
+% Start => integer dat zegt welke functie eerst opgeroepen moet worden
+% Data is een lijst van data(Address, str) waarbij str de rauwe strings zijn "\12\44\222" etc
+% Funcs zijn een lijst van functies
 module(module(Start, Data, Funcs)) -->
     ws, "(", "module", ws,
     start(Start),
@@ -51,6 +55,7 @@ data_segment(data(Address, Str)) -->
 functions([F|T]) --> function(F), functions(T).
 functions([]) --> [].
 
+% aantal args, aantal locals, aantal resultaten, en lijst van instructies in die functie
 function(func(Args, Locals, Results, Instrs)) -->
     "(", "func", ws,
     args(Args),
@@ -104,7 +109,7 @@ instruction(block(Instrs)) --> "block", ws, block_instructions(Instrs), "end", w
 instruction(loop(Instrs)) --> "loop", ws, block_instructions(Instrs), "end", ws.
 instruction(if(TrueBlock, FalseBlock)) -->
     "if", ws, block_instructions(TrueBlock),
-    ( "else", ws, block_instructions(FalseBlock) ; { FalseBlock = [] } ),
+    ( "else", ws, block_instructions(FalseBlock) ; { FalseBlock = [] } ), % de ; operator is de of operator, we testen dus op een else tak, als die er niet is dan zeggen we gewoon lege else
     "end", ws.
 
 % Nested blocks
@@ -129,7 +134,9 @@ integer(N) --> optional_sign(Sign), digits(Ds), { append(Sign, Ds, AllCodes), nu
 optional_sign([45]) --> [45], !.  % 45 is ASCII voor '-'
 optional_sign([]) --> [].
 
-digits([D|T]) --> [D], { char_type(D,digit) }, digits_rest(T).
+% minstens 1 digit
+digits([D|T]) --> [D], { char_type(D,digit) }, digits_rest(T). % {} voert gewoon prolog code uit maar consumed geen chars
+% nul of meer digits nadien
 digits_rest([D|T]) --> [D], { char_type(D,digit) }, digits_rest(T).
 digits_rest([]) --> [].
 
@@ -138,7 +145,7 @@ digits_rest([]) --> [].
 
 % Bewaar de inhoud tussen quotes letterlijk als string, zonder escape-conversie.
 string_literal(Str) -->
-    [34],
+    [34], % is ascii voor "
     raw_string_codes(Codes),
     [34],
     { string_codes(Str, Codes) }.

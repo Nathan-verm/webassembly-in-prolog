@@ -30,6 +30,8 @@ handle_function_signal(continue, ResultCount, Stack, Returns, finished) :-
     stack_has_n(Stack, ResultCount),
     take_n(ResultCount, Stack, Returns),
     !.
+
+% niet genoeg waarden op de stack => invalid
 handle_function_signal(continue, _ResultCount, _Stack, [], invalid).
 
 % returned => func is finished
@@ -80,6 +82,7 @@ continue_or_stop(continue, Rest, Module, LocalsIn, LocalsOut, StackIn, StackOut,
         StackOut = StackIn,
         Signal = continue,
         ContextOut = ContextIn
+        % we voeren geen instructies meer uit hier, dus stoppen
     ;
         exec_instructions(Rest, Module, LocalsIn, LocalsOut, StackIn, StackOut, Memory, Signal, ContextIn, ContextOut)
     ).
@@ -95,12 +98,14 @@ instruction_limit_reached(analyse(MaxInstructions, CurrentCounter, _Inputs)) :-
     CurrentCounter >= MaxInstructions,
     !.
 
+% dubbel
 instruction_limit_reached(analyse(MaxInstructions, CurrentCounter, _Inputs, _PathTrace)) :-
     integer(MaxInstructions),
     integer(CurrentCounter),
     CurrentCounter >= MaxInstructions,
     !.
 
+% nodig voor run context die geen limit hebben
 instruction_limit_reached(_Context) :-
     fail.
 
@@ -144,10 +149,11 @@ call_internal(Index, Module, StackIn, StackOut, Memory, Signal, ContextIn, Conte
     prepare_to_return(Status, Returns, StackIn, StackRest, StackOut, Signal),
     !.
 
+% check ofdat call kan gemaakt worden, zoniet zet status op invalid
 call_internal(Index, Module, Stack, Stack, _Memory, invalid, Context, Context) :-
     Module = module(_Start, _Data, Funcs),
     ( 
-        \+ nth0(Index, Funcs, _)
+        \+ nth0(Index, Funcs, _) %check ofdat deze index bestaat
     ;
         nth0(Index, Funcs, func(ArgCount, _Locals, _Results, _Instrs)),
         \+ stack_has_n(Stack, ArgCount)
@@ -175,7 +181,7 @@ exec_instruction(i32_sub, _Module, Locals, Locals, StackIn, StackOut, _Memory, S
 exec_instruction(i32_mul, _Module, Locals, Locals, StackIn, StackOut, _Memory, Signal, Context, Context) :-
     binary_op(StackIn, StackOut, *, Signal).
 
-% deling door nul → trap (stack minsten 2 waarden: 0 en A)
+% deling door nul trap (stack minsten 2 waarden: 0 en A)
 exec_instruction(i32_div_s, _Module, Locals, Locals, [0, A|Rest], [0, A|Rest], _Memory, trap, Context, Context).
 
 % normale deling

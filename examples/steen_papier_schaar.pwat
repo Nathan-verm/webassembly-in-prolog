@@ -1,0 +1,100 @@
+(module
+    (start 0)
+
+    ;; "0=Steen, 1=Papier, 2=Schaar: " (31 tekens)
+    (data 0 "\48\61\83\116\101\101\110\44\32\49\61\80\97\112\105\101\114\44\32\50\61\83\99\104\97\97\114\58\32")
+
+    ;; "Jij: " (5 tekens)
+    (data 31 "\74\105\106\58\32")
+
+    ;; "PC: " (4 tekens)
+    (data 36 "\80\67\58\32")
+
+    ;; "Gelijk!" (7 tekens)
+    (data 40 "\71\101\108\105\106\107\33")
+
+    ;; "Jij wint!" (9 tekens)
+    (data 47 "\74\105\106\32\119\105\110\116\33")
+
+    ;; "PC wint!" (8 tekens)
+    (data 56 "\80\67\32\119\105\110\116\33")
+
+    ;; Main function: locals[0]=user, locals[1]=pc, locals[2]=diff
+    (func (args 0) (locals 3) (results 0)
+        ;; Prompt
+        i32.const 0
+        i32.const 31
+        call println
+
+        ;; Read user choice (0, 1, or 2)
+        i32.const -1
+        i32.const 3
+        call read_int
+        local.set 0
+
+        ;; Generate computer choice (0, 1, or 2)
+        i32.const 0
+        i32.const 3
+        call rand_int
+        local.set 1
+
+        ;; Print "Jij: "
+        i32.const 31
+        i32.const 5
+        call println
+        ;; Print user choice
+        local.get 0
+        call print_int
+
+        ;; Print "PC: "
+        i32.const 36
+        i32.const 4
+        call println
+        ;; Print computer choice
+        local.get 1
+        call print_int
+
+        ;; diff = user - pc
+        local.get 0
+        local.get 1
+        i32.sub
+        local.set 2
+
+        ;; Check tie (diff == 0)
+        local.get 2
+        i32.eqz
+        if
+            i32.const 40
+            i32.const 7
+            call println
+            return
+        end
+
+        ;; User wins if diff == 1
+        local.get 2
+        i32.const 1
+        i32.eq
+        if
+            i32.const 47
+            i32.const 9
+            call println
+            return
+        end
+
+        ;; User wins if diff == -2
+        local.get 2
+        i32.const -2
+        i32.eq
+        if
+            i32.const 47
+            i32.const 9
+            call println
+            return
+        end
+
+        ;; Otherwise PC wins
+        i32.const 56
+        i32.const 8
+        call println
+    )
+)
