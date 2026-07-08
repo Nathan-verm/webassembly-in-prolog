@@ -47,7 +47,6 @@ conditions is used to explore the program's execution tree.
   ```
 
 - A Unix-like shell (the `plwasm` launcher is a bash script).
-- *(Optional)* Docker, only if you want to use the provided container image.
 
 ## Quick start
 
