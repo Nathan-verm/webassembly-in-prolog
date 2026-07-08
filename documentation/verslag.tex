@@ -1,0 +1,375 @@
+\documentclass[a4paper,11pt]{article}
+
+\usepackage[dutch]{babel}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{xcolor}
+
+% Style for Prolog code blocks using listings
+\lstset{
+    language=Prolog,
+    basicstyle=\ttfamily\small,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=8pt,
+    breaklines=true,
+    showstringspaces=false,
+    frame=single,
+    captionpos=b
+}
+
+\setlength{\parindent}{0pt}
+\geometry{margin=2.5cm}
+
+\title{Project Logisch Programmeren \\[4pt]
+\large Analyse Tool voor Vereenvoudigde WebAssembly in Prolog}
+\author{Nathan Vermeiren}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+
+\section{Inleiding}
+
+Dit project heeft als doel het implementeren van een interpreter en analyse tool
+voor een vereenvoudigde versie van WebAssembly in Prolog. De tool ondersteunt
+drie modi:
+
+\begin{itemize}
+    \item \textbf{run}: het uitvoeren van een programma
+    \item \textbf{analyse}: het vinden van inputs die leiden tot een trap
+    \item \textbf{paths}: het vinden van inputs voor elk uitvoeringspad
+\end{itemize}
+
+Dit project leent zich uitstekend tot logisch programmeren omdat symbolische
+uitvoering, backtracking en padverkenning hier natuurlijke toepassingen van zijn.
+
+In dit verslag wordt eerst de algemene architectuur besproken, daarna de
+werking van de interpreter, gevolgd door de analyse engine en tenslotte de
+teststrategie en conclusies.
+
+
+\section{Algemene Architectuur}
+
+Het project bestaat uit vier grote componenten:
+
+\begin{itemize}
+    \item Parser voor het pwat formaat en dit omzetten naar een interne prolog structuur.
+    \item Interpreter voor concrete uitvoering.
+    \item Analyse engine voor het vinden van goede en slechte inputs.
+\end{itemize}
+
+Het is handig om nu al te vermelden dat de interpreter en de analyse logica heel nauw samen liggen, en heel veel dezelfde predicaten gebruiken.
+Dit is logisch omdat het anlyseren ook code moet gaan 'uitvoeren'.
+
+
+
+\section{Parser}
+De parser leest een pwat bestand en zet dit om naar een interne Prolog representatie die eenvoudig kan geïnterpreteerd worden.
+Hoe werkt dit concreet in mijn project: \\
+
+Alle parsing bevindt zich in \texttt{src/parser.pl}. Eerst lezen we het volledige bestand in als string.
+Deze string wordt vervolgens omgezet naar een lijst van karaktercodes. Op deze lijst van codes passen we een \textbf{DCG} (Definite Clause Grammar)
+toe.. De DCG doorloopt dus letterlijk elk karakter van het bestand en probeert dit te herkennen volgens de grammatica die gedefinieerd is in de parser.
+We doen dit op de volgende manier:
+De entry point van de parser is de DCG-regel \texttt{module/1}. Deze verwacht dat het bestand begint met een \texttt{(module ...)} constructie. Van hieruit wordt het bestand verder opgesplitst in drie grote delen:
+\begin{itemize}
+    \item de startfunctie
+    \item eventuele data segmenten
+    \item de lijst van functies
+\end{itemize}
+
+Vooraleer effectieve instructies of structuren gelezen worden, wordt telkens eerst de DCG-regel \texttt{ws/0} aangeroepen. Deze regel verwijdert alle witruimte en commentaar.
+Commentaar wordt herkend aan de prefix ';;' en wordt volledig genegeerd tot aan het einde van de lijn.
+Hierdoor kan de rest van de grammatica ervan uitgaan dat irrelevante tekens reeds verwijderd zijn.
+
+\footnote{Het is dus perfect mogelijk in mijn parser dat er helemaal geen spaties gebruikt worden. Er is namelijk geen dubbelzinnigheid mogelijk. Wel moeten 
+er newlines zijn, anders weten we niet wanneer dat commentaar stopt.}
+
+Elke syntactische constructie uit het pwat formaat krijgt vervolgens een eigen DCG-regel:
+\begin{itemize}
+    \item \texttt{start/1} leest de startfunctie
+    \item \texttt{data\_segment/1} leest data segmenten
+    \item \texttt{function/1} leest functies met hun eigenschappen
+    \item \texttt{instruction/1} leest individuele instructies
+\end{itemize}
+
+Een functie wordt geparsed naar een Prolog term van de vorm:
+\[
+\texttt{func(Args, Locals, Results, Instrs)}
+\]
+waarbij \texttt{Instrs} een lijst is van instructietermen.
+
+Elke WebAssembly instructie wordt rechtstreeks omgezet naar een Prolog term met dezelfde semantiek. Bijvoorbeeld:
+\begin{itemize}
+    \item \texttt{i32.const 3} wordt \texttt{i32\_const(3)}
+    \item \texttt{i32.add} wordt \texttt{i32\_add}
+    \item \texttt{local.get 0} wordt \texttt{local\_get(0)}
+\end{itemize}
+
+Control flow instructies zoals \texttt{block}, \texttt{loop} en \texttt{if} worden recursief geparsed. De instructies die zich binnen zo'n blok bevinden worden opnieuw
+verwerkt door dezelfde \texttt{instruction/1} regel. Hierdoor ontstaat een \textbf{geneste boomstructuur} van instructies in plaats van een platte lijst.
+Dit is belangrijk voor de interpreter, aangezien de blokstructuur expliciet beschikbaar blijft in de representatie.
+
+Bijvoorbeeld, een \texttt{block} wordt omgezet naar:
+\[
+\texttt{block(Instrs)}
+\]
+waarbij \texttt{Instrs} opnieuw een lijst van instructies bevat.
+
+Voor oproepen van functies wordt onderscheid gemaakt tussen:
+\begin{itemize}
+    \item interne functies, aangeduid met een index
+    \item primitieve functies, aangeduid met een naam zoals \texttt{read\_int} of \texttt{print\_int}
+\end{itemize}
+
+Deze worden beide omgezet naar de term \texttt{call(X)} waarbij \texttt{X} ofwel een getal ofwel een atoom is.
+
+Ten slotte worden gehele getallen herkend via de regels \texttt{integer/1} en \texttt{digits/1}. String literals uit data segmenten worden letterlijk
+opgeslagen als strings zonder verdere escape-verwerking.
+Dit is voldoende aangezien de interpreter later deze strings byte per byte kan verwerken.
+
+Het resultaat van de parser is uiteindelijk een Prolog term van de vorm:
+
+\[
+\texttt{module(Start, Data, Funcs)}
+\]
+
+die rechtstreeks gebruikt kan worden door de interpreter en de analyse engine, zonder dat er nog verdere syntactische verwerking nodig is.
+Het voorbeeld voor het hogerlager.pwat bestand kan men in de bijlage vinden.
+
+Om snel inzicht te geven in de implementatie, volgen hier twee korte en representatieve fragmenten uit \texttt{src/parser.pl} (DCG-regels):
+
+\begin{lstlisting}
+% Module
+module(module(Start, Data, Funcs)) -->
+    ws, "(", "module", ws,
+    start(Start),
+    data_segments(Data),
+    functions(Funcs),
+    ws, ")", ws.
+
+% Numeric instruction (voorbeeld)
+instruction(i32_const(X)) --> "i32.const", ws, integer(X), ws.
+instruction(i32_add) --> "i32.add", ws.
+\end{lstlisting}
+
+Foutafhandeling: de parser-predicaat \texttt{parse/2} gebruikt \texttt{once(phrase(module(Module), Codes))}. Wanneer de input niet door de DCG geaccepteerd wordt, faalt \texttt{parse/2} en wordt dit doorgegeven naar de caller. In de CLI-flow leidt een parse-failure uiteindelijk tot een foutmelding en exit (zie \texttt{src/main.pl} en \texttt{src/runner.pl}). Testen die parser-fouten verwachten zijn onderdeel van \texttt{tests/test\_parsing.pl}.
+
+
+% ------------------------------------------------
+
+
+\section{Werking van de Interpreter (run modus)}
+
+De uitvoering van een programma start in \texttt{run\_file/2}. Na het parsen van het pwat-bestand wordt de
+bekomen module doorgegeven aan \texttt{run\_module/2}. Daar worden eerst de data-segmenten omgezet naar een
+geheugenvoorstelling via \texttt{build\_memory/2}. Vervolgens wordt de startfunctie van de module uitgevoerd.
+
+De kern van de interpreter zit in het volgende predicaat:
+
+\begin{verbatim}
+execute_function(Index, Args, Module, Memory, Returns, Status, ContextIn, ContextOut) :-
+    setup_function(Index, Args, Module, LocalsIn, Instrs, ResultCount),
+    run_function(Instrs, Module, LocalsIn, Memory, Stack1, Signal, ContextIn, ContextOut),
+    handle_function_signal(Signal, ResultCount, Stack1, Returns, Status).
+\end{verbatim}
+
+Dit predicaat geeft de grote lijn van de uitvoering in drie stappen: eerst wordt de functie klaargezet
+(argumenten en locals), daarna worden de instructies uitgevoerd, en op het einde wordt het eindsignaal
+verwerkt om de status en returnwaarden te bepalen.
+
+Wat ook belangrijk is is het signaal-mechanisme: instructies geven signalen door zoals
+\texttt{continue}, \texttt{returned}, \texttt{trap}, \texttt{invalid} of \texttt{break(N)}.
+Die signalen bepalen of de uitvoering doorgaat of stopt. Verderop in deze sectie bespreken we dat stap voor stap.
+
+Ook de stack-werking volgt hetzelfde idee doorheen de hele interpreter: elke functie start met een lege
+operand-stack, waarden worden tijdens de uitvoering gepusht en gepopt, en bij een \texttt{call} gaan argumenten
+van caller naar callee en komen returnwaarden terug naar de caller.
+
+\subsection*{Sequentiële uitvoering van instructies}
+
+De uitvoering van instructies gebeurt in \texttt{exec\_instructions/10}. Deze predicate doorloopt de instructielijst 1 voor 1.
+Voor elke instructie wordt \texttt{exec\_instruction/10} aangeroepen, dat:
+de stack aanpast,
+locals leest of wijzigt,
+en een \emph{signaal} teruggeeft dat bepaalt wat er verder moet gebeuren.
+Na elke instructie wordt via \texttt{continue\_or\_stop/11} beslist of de volgende instructie uitgevoerd moet worden of dat de uitvoering moet stoppen,
+dit gebeurd adhv signalen die worden doorgegeven.
+
+\subsection*{Signaal-mechanisme}
+
+Elke instructie kan 1 van de volgende signalen teruggeven:
+
+\begin{itemize}
+    \item \texttt{continue} : ga verder met de volgende instructie
+    \item \texttt{returned} : stop de functie-uitvoering
+    \item \texttt{trap} : er is een fout opgetreden
+    \item \texttt{invalid} : ongeldig programma (bv. stack-underflow of ongeldige local)
+    \item \texttt{break(N)} : verlaat een block of loop op niveau $N$
+\end{itemize}
+
+Deze signalen worden naar boven doorgegeven zodat blocks, loops en functies correct kunnen reageren.
+
+\subsection*{Stack en locals}
+
+Alle berekeningen gebeuren via een stack, volledig analoog aan WebAssembly:
+
+\begin{itemize}
+    \item constanten worden gepusht met \texttt{i32\_const},
+    \item binaire operaties poppen twee waarden en pushen het resultaat,
+    \item \texttt{local\_get}, \texttt{local\_set} en \texttt{local\_tee} manipuleren de locals via de stack.
+\end{itemize}
+
+Indien een instructie onvoldoende waarden op de stack vindt of een ongeldige local aanspreekt, wordt een \texttt{invalid} gegenereerd.
+
+\subsection*{Control flow: block, loop, if en branches}
+
+Control-flow instructies worden recursief afgehandeld:
+
+\begin{itemize}
+    \item \texttt{block} verwerkt \texttt{break(N)} signalen via \texttt{handle\_block\_signal/6}.
+    \item \texttt{loop} wordt uitgevoerd via \texttt{run\_loop/11} en herstart zichzelf bij \texttt{break(0)}.
+    \item \texttt{if} kiest het juiste instructieblok op basis van de stackwaarde.
+    \item \texttt{br} en \texttt{br\_if} genereren \texttt{break(N)} signalen.
+\end{itemize}
+
+Een belangrijk aspect in deze implementatie is dat control-flow niet met expliciete continu-
+ations wordt gemodelleerd, maar via het normale backtrackingmechanisme. Zodra een break(N)
+optreedt, wordt verdere matching binnen het huidige control-flow niveau effectief afgebroken.
+Predicaten die op een break-signaal matchen voeren doorgaans geen verdere recursie of alter-
+natieve keuzes meer uit, waardoor ook de bijhorende keuze-punten worden afgesloten. Hierdoor
+stopt niet alleen de logische voortzetting van de evaluatie, maar wordt ook backtracking binnen
+dat control-flow niveau verhinderd.
+
+
+\subsection*{Functie-aanroepen}
+
+Bij een \texttt{call} instructie wordt onderscheid gemaakt tussen:
+
+\begin{itemize}
+    \item interne functies (via index) die recursief \texttt{execute\_function/8} oproepen,
+    \item primitieve functies die worden afgehandeld door \texttt{primitive\_runner.pl}.
+\end{itemize}
+
+Argumenten worden van de stack gepopt en returnwaarden worden terug op de stack geplaatst.
+
+\subsection*{Primitieve functies en geheugen}
+
+Primitieve functies zoals \texttt{print}, \texttt{println}, \texttt{print\_int}, \texttt{read\_int} en \texttt{rand\_int}
+gebruiken het geheugen dat werd opgebouwd uit de data-segmenten.
+
+\subsection*{Context}
+
+De parameters \texttt{ContextIn} en \texttt{ContextOut} worden doorheen de volledige uitvoering meegegeven.
+
+In \emph{run modus} is deze context gewoon het atoom \texttt{run} en heeft deze geen invloed op de uitvoering.
+
+In \emph{analyse modus} bevat deze context bijkomende informatie. Dat zullen we later bespreken.
+
+
+Hierdoor kan 'exact' dezelfde interpreter zowel voor effectieve uitvoering als voor analyse en padverkenning gebruikt worden.
+
+\section{Analyse en Paths}
+
+De \texttt{analyse} en \texttt{paths} modi gebruiken dezelfde interpreter als de \texttt{run}-modus, maar met een context die extra informatie bijhoudt.
+Die context wordt in \texttt{src/main.pl} aangemaakt:
+\begin{lstlisting}
+ContextIn = analyse(MaxInstructions, 0, [], []).
+\end{lstlisting}
+
+De term heeft de vorm \texttt{analyse(MaxInstructions, CurrentCounter, Inputs, PathTrace)}. Tijdens de uitvoering worden velden bijgewerkt door \texttt{src/function\_runner.pl}:
+
+\begin{itemize}
+    \item \texttt{increment\_instruction\_counter/2} verhoogt \texttt{CurrentCounter} na elke instructie.
+    \item \texttt{record\_branch\_decision/3} voegt beslissingen toe aan \texttt{PathTrace}, zodat we kunnen zien welke takken zijn genomen.
+\end{itemize}
+
+Belangrijk: in analyse-modus worden sommige primitieve functies (bijv. \texttt{read\_int} en \texttt{rand\_int}) als bronnen van meerdere mogelijke waarden behandeld. In plaats van één vaste uitkomst enumereren ze in de analyse meerdere waarden, wat resulteert in meerdere mogelijke uitvoeringspaden. De combinatie van deze niet-deterministische primitieve keuzes en de vastgelegde beslissingen in \texttt{PathTrace} maakt padverkenning mogelijk.
+
+Om alle mogelijke paden te verzamelen roept het programma herhaaldelijk de analyse aan en gebruikt \texttt{findall} (via \texttt{collect\_all\_results/3}) om alle \texttt{Status-Inputs-PathTrace} combinaties te verzamelen. Daarna worden deze resultaten gefilterd en gededupliceerd (bijv. met \texttt{prefer\_complete\_trap\_paths/2}, \texttt{prefer\_decision\_paths/2} en \texttt{keep\_first\_input\_per\_path/2}) zodat de output per pad overzichtelijk blijft.
+
+De limiet \texttt{MaxInstructions} voorkomt dat oneindige paden te lang doorgaan: zodra \texttt{CurrentCounter} \textgreater= \texttt{MaxInstructions} stopt die run.
+
+
+
+
+% ----------------------------------------------------
+\section{Teststrategie}
+
+De teststrategie is opgebouwd rond kleine, gerichte \texttt{pwat}-programma's. In plaats van slechts een paar
+grote scenario's te testen, hebben we veel verschillende inputprogramma's geschreven die telkens maar 1 onderdeel
+van het systeem checken/gebruiken. Daardoor is een fout veel sneller te vinden: als een test faalt, is meteen duidelijk of het
+probleem in de parser, de interpreter, de analyse of de padverkenning zit.
+
+De tests zijn opgedeeld in verschillende delen:
+
+\begin{itemize}
+    \item \textbf{Parser-tests}: controleren of een bestand correct naar de interne prolog-structuur wordt omgezet. Hier testen we onder andere blokken,
+    data-segmenten, lussen en geneste control-flow.
+    \item \textbf{Run-tests}: voeren concrete programma's uit en controleren de eindtoestand en returnwaarden. Deze tests testen onder andere
+    rekenkundige instructies, locals, branches, returns en geheugenoperaties.
+    \item \textbf{Analyse-tests}: controleren of de analysemodus inputs kan vinden die tot een trap leiden. Hier testen we onder meer \texttt{unreachable},
+    deling door nul, conditionele traps en lussen met een instructielimiet.
+    \item \textbf{Paths-tests}: controleren of voor elk uitvoeringspad minstens 1 geschikte input gevonden wordt, ook wanneer een programma meerdere geneste vertakkingen bevat.
+    \item \textbf{CLI-tests}: testen het volledige programma via de command-line interface en controleren of de output exact in het verwachte formaat verschijnt.
+    \item \textbf{Exit-code-tests}: controleren of het programma de juiste exit codes retourneert voor verschillende scenario's. Dit omvat: exit code 0 bij succesvolle uitvoering, exit code 1 voor ongeldig programma's en parsing-fouten, en exit code 2 wanneer een trap optreedt.
+\end{itemize}
+
+Alle tests worden uitgevoerd via een testscript. Voor de meeste gevallen gebruiken we kleine tijdelijke programma's in de test zelf, zodat we per test exact kunnen bepalen
+welk gedrag verwacht wordt. Voor integratietests gebruiken we ook bestaande voorbeeldbestanden uit de map \texttt{examples/}, zodat dezelfde programma's zowel
+handmatig als automatisch nagekeken kunnen worden.
+
+\newpage
+% ----------------------------------------------------
+\appendix
+\section{Bijlage}
+
+Voorbeeld internevoorstelling na parsing voor het hogerlager.pwat bestand.
+\begin{lstlisting}
+module(0,
+ [data(0,"\71\101\101\102\32\101\101\110\32\103\101\116\97\108\32\105\110\58"),
+  data(18,"\104\111\103\101\114"),
+  data(23,"\108\97\103\101\114"),
+  data(28,"\99\111\114\114\101\99\116")],
+ [func(0,2,0,
+  [i32_const(0),
+   i32_const(18),
+   call(println),
+   i32_const(0),
+   i32_const(100),
+   call(rand_int),
+   local_set(0),
+   loop([
+     i32_const(0),
+     i32_const(100),
+     call(read_int),
+     local_set(1),
+     local_get(1),
+     local_get(0),
+     i32_lt_s,
+     if(
+       [i32_const(18), i32_const(5), call(println), br(1)],
+       [local_get(1), local_get(0), i32_gt_s,
+        if(
+          [i32_const(23), i32_const(5), call(println), br(2)],
+          [i32_const(28), i32_const(7), call(println), br(2)]
+        )
+       ]
+     )
+   ])
+  ])
+ ])
+\end{lstlisting}
+
+
+\end{document}
